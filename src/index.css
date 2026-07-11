@@ -1,0 +1,93 @@
+@import "tailwindcss";
+
+@theme {
+  --color-coral-50: #FDF1EE;
+  --color-coral-100: #FBDFD8;
+  --color-coral-200: #F6BEB0;
+  --color-coral-300: #F09A85;
+  --color-coral-400: #EC7F66;
+  --color-coral-500: #E5654A;
+  --color-coral-600: #D14E33;
+  --color-coral-700: #AE3E28;
+
+  --color-leaf-50: #EDF7F1;
+  --color-leaf-100: #D5EEDF;
+  --color-leaf-400: #4CAE7E;
+  --color-leaf-500: #3B9B6D;
+  --color-leaf-600: #2E7D57;
+  --color-leaf-700: #256648;
+
+  --color-cream-50: #FCFAF6;
+  --color-cream-100: #F8F4EC;
+  --color-cream-200: #F1EADD;
+  --color-cream-300: #E5DBC9;
+
+  --color-ink-300: #A89F94;
+  --color-ink-400: #8A8177;
+  --color-ink-500: #6B635A;
+  --color-ink-700: #423C35;
+  --color-ink-900: #29241F;
+
+  --color-violet-50: #F3F0FA;
+  --color-violet-100: #E5DFF4;
+  --color-violet-400: #9C8AD1;
+  --color-violet-500: #8471BE;
+  --color-violet-600: #6C5AA6;
+
+  --color-amber-50: #FBF4E4;
+  --color-amber-100: #F6E7C4;
+  --color-amber-500: #C98F1F;
+  --color-amber-600: #A87513;
+
+  --font-sans: -apple-system, BlinkMacSystemFont, "PingFang SC", "Hiragino Sans GB", "Noto Sans SC", "Microsoft YaHei", "Segoe UI", sans-serif;
+
+  --shadow-card: 0 1px 2px rgba(41, 36, 31, 0.04), 0 4px 16px rgba(41, 36, 31, 0.06);
+  --shadow-card-hover: 0 2px 4px rgba(41, 36, 31, 0.06), 0 8px 28px rgba(41, 36, 31, 0.10);
+  --shadow-nav: 0 1px 0 rgba(41, 36, 31, 0.06);
+}
+
+body {
+  @apply bg-cream-100 text-ink-900 font-sans antialiased;
+}
+
+/* 卡片 */
+.card {
+  @apply bg-white rounded-2xl shadow-card;
+}
+.card-hover {
+  @apply transition-all duration-200 hover:shadow-card-hover hover:-translate-y-0.5;
+}
+
+/* 按钮 */
+.btn, .btn-primary, .btn-secondary, .btn-ghost, .btn-green, .btn-outline, .btn-danger {
+  @apply inline-flex items-center justify-center gap-1.5 rounded-xl font-medium transition-colors
+    px-4 py-2 text-sm cursor-pointer select-none disabled:opacity-40 disabled:cursor-not-allowed;
+}
+.btn-primary { @apply bg-coral-500 text-white hover:bg-coral-600; }
+.btn-secondary { @apply bg-coral-50 text-coral-600 hover:bg-coral-100; }
+.btn-ghost { @apply text-ink-500 hover:bg-cream-200 hover:text-ink-700; }
+.btn-green { @apply bg-leaf-500 text-white hover:bg-leaf-600; }
+.btn-outline { @apply border border-cream-300 text-ink-700 hover:bg-cream-100 bg-white; }
+.btn-danger { @apply bg-white border border-coral-200 text-coral-600 hover:bg-coral-50; }
+
+/* 徽章 */
+.chip {
+  @apply inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium;
+}
+
+/* 输入 */
+.input {
+  @apply w-full rounded-xl border border-cream-300 bg-white px-3.5 py-2.5 text-sm text-ink-900
+    placeholder:text-ink-300 focus:outline-none focus:ring-2 focus:ring-coral-300 focus:border-coral-300 transition;
+}
+.label { @apply block text-xs font-medium text-ink-500 mb-1.5; }
+
+/* 滚动条 */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-thumb { background: var(--color-cream-300); border-radius: 3px; }
+
+.masonry { column-gap: 1rem; }
+.masonry > * { break-inside: avoid; margin-bottom: 1rem; }
+
+@keyframes fade-up { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+.fade-up { animation: fade-up .35s ease both; }
