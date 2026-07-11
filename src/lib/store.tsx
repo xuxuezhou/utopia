@@ -8,14 +8,19 @@ import { assessRisk, assessMessage, type RiskResult } from './risk'
 import { buildSeedState } from '../data/seed'
 
 const STORAGE_KEY = 'utopia-state-v1'
+// 持久化结构版本:与 localStorage 中的状态不匹配时重建种子数据
+const SCHEMA_VERSION = 2
 
 let seq = 1000
 export function genId(prefix: string): string {
   seq += 1
   return `${prefix}${Date.now().toString(36)}${seq}`
 }
+// 本地时间字符串(与种子数据口径一致,不带时区标记,按本地时间解析)
 export function nowISO(): string {
-  return new Date().toISOString().slice(0, 19)
+  const d = new Date()
+  const p = (n: number) => String(n).padStart(2, '0')
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}:${p(d.getSeconds())}`
 }
 
 // ============ 积分账本派生计算(余额永远从账本推导,不存字段) ============
@@ -109,15 +114,19 @@ interface StoreCtx {
 
 const Ctx = createContext<StoreCtx | null>(null)
 
+function freshState(): AppState {
+  return { ...buildSeedState(), schemaVersion: SCHEMA_VERSION }
+}
+
 function loadState(): AppState {
   try {
     const raw = localStorage.getItem(STORAGE_KEY)
     if (raw) {
       const parsed = JSON.parse(raw) as AppState
-      if (parsed.users?.length && parsed.tasks?.length) return parsed
+      if (parsed.schemaVersion === SCHEMA_VERSION && parsed.users?.length && parsed.tasks?.length) return parsed
     }
   } catch { /* 损坏则重建 */ }
-  return buildSeedState()
+  return freshState()
 }
 
 function buildActions(setState: (fn: (s: AppState) => AppState) => void, getState: () => AppState) {
@@ -228,10 +237,18 @@ function buildActions(setState: (fn: (s: AppState) => AppState) => void, getStat
         notify(d, t.publisherId, '🙋', '收到新的帮助申请', `「${t.title}」收到了新的申请,去看看吧。`, `/task/${t.id}`)
       })
     },
-    selectHelper(taskId: string, helperId: string) {
+    selectHelper(taskId: string, helperId: string): { ok: boolean; reason?: string } {
+      const s = getState()
+      const task = s.tasks.find(x => x.id === taskId)
+      if (!task || task.helperId || !['open', 'applied'].includes(task.status))
+        return { ok: false, reason: '任务状态已变化,无法选择帮助者。' }
+      const need = task.points + task.serviceFee
+      const balance = availablePoints(s, task.publisherId)
+      if (balance < need)
+        return { ok: false, reason: `可用积分不足:托管需要 ${need} pt,当前可用 ${balance} pt。` }
       mutate(d => {
         const t = d.tasks.find(x => x.id === taskId)
-        if (!t) return
+        if (!t || t.helperId || !['open', 'applied'].includes(t.status)) return
         t.helperId = helperId
         t.status = hoursUntilStart(t) <= 24 ? 'starting_soon' : 'matched'
         for (const a of t.applicants) a.status = a.userId === helperId ? 'selected' : 'declined'
@@ -253,6 +270,7 @@ function buildActions(setState: (fn: (s: AppState) => AppState) => void, getStat
         for (const a of t.applicants.filter(x => x.status === 'declined'))
           notify(d, a.userId, '💌', '这次没有匹配上', `「${t.title}」的发布者选择了其他帮助者。感谢你的善意,附近还有更多互助等你。`, '/nearby')
       })
+      return { ok: true }
     },
 
     // ---------- 执行 ----------
@@ -277,7 +295,7 @@ function buildActions(setState: (fn: (s: AppState) => AppState) => void, getStat
     confirmComplete(taskId: string, outcome: 'done' | 'partial') {
       mutate(d => {
         const t = d.tasks.find(x => x.id === taskId)
-        if (!t || !t.helperId) return
+        if (!t || !t.helperId || t.status !== 'pending_confirm') return
         t.status = 'completed'
         t.completedAt = nowISO()
         if (outcome === 'done') {
@@ -302,7 +320,10 @@ function buildActions(setState: (fn: (s: AppState) => AppState) => void, getStat
       mutate(d => {
         const t = d.tasks.find(x => x.id === taskId)
         if (!t) return
-        const matched = !!t.helperId && ['matched', 'starting_soon', 'in_progress'].includes(t.status)
+        const prevStatus = t.status
+        // 防御:只要还有托管中(锁定/冻结)的账目,就必须走结算,不能只看状态
+        const hasEscrow = escrowEntries(d, t.id).length > 0
+        const matched = hasEscrow || (!!t.helperId && ['matched', 'starting_soon', 'in_progress', 'pending_confirm'].includes(prevStatus))
         t.status = 'cancelled'
         t.cancelledBy = byId
         t.cancelReason = reason
@@ -310,15 +331,19 @@ function buildActions(setState: (fn: (s: AppState) => AppState) => void, getStat
           summary = '任务尚未匹配,已直接关闭,没有积分变动。'
         } else if (byId === t.publisherId) {
           const h = hoursUntilStart(t)
-          if (h >= 24) {
+          // pending_confirm:对方已交付,一律按临近取消的补偿逻辑处理
+          if (h >= 24 && prevStatus !== 'pending_confirm') {
             releaseEscrow(d, t, 0, t.points, '发布者提前取消')
             summary = `距开始超过 24 小时,${t.points} pt 任务积分与服务积分已全额退回。`
+          } else if (!t.helperId) {
+            releaseEscrow(d, t, 0, t.points, '发布者取消')
+            summary = `${t.points} pt 任务积分与服务积分已全额退回。`
           } else {
             const comp = Math.ceil(t.points * 0.2)
             for (const e of escrowEntries(d, t.id)) e.status = 'settled'
-            d.ledger.push(mkEntry({ taskId, from: 'sys:escrow', to: t.helperId!, amount: comp, type: 'cancel_compensation', memo: '临近开始取消,补偿帮助者' }))
+            d.ledger.push(mkEntry({ taskId, from: 'sys:escrow', to: t.helperId, amount: comp, type: 'cancel_compensation', memo: prevStatus === 'pending_confirm' ? '帮助者已交付后取消,补偿帮助者' : '临近开始取消,补偿帮助者' }))
             d.ledger.push(mkEntry({ taskId, from: 'sys:escrow', to: t.publisherId, amount: t.points - comp + t.serviceFee, type: 'task_refund', memo: '取消退款(扣除补偿)' }))
-            summary = `距开始不足 24 小时:${comp} pt 补偿给帮助者,其余 ${t.points - comp + t.serviceFee} pt 退回。你的可靠度会受到影响。`
+            summary = `${prevStatus === 'pending_confirm' ? '帮助者已提交完成' : '距开始不足 24 小时'}:${comp} pt 补偿给帮助者,其余 ${t.points - comp + t.serviceFee} pt 退回。你的可靠度会受到影响。`
             const pub = findUser(d, t.publisherId)
             if (pub) pub.stats.cancelRate = Math.min(100, pub.stats.cancelRate + 3)
           }
@@ -377,7 +402,7 @@ function buildActions(setState: (fn: (s: AppState) => AppState) => void, getStat
     resolveDispute(disputeId: string, ruling: { toHelper: number; toPublisher: number; note: string }, admin = 'admin@utopia') {
       mutate(d => {
         const dis = d.disputes.find(x => x.id === disputeId)
-        if (!dis) return
+        if (!dis || (dis.status !== 'open' && dis.status !== 'reviewing')) return
         const t = d.tasks.find(x => x.id === dis.taskId)
         if (!t) return
         for (const e of escrowEntries(d, t.id)) e.status = 'settled'
@@ -574,6 +599,8 @@ function buildActions(setState: (fn: (s: AppState) => AppState) => void, getStat
       mutate(d => {
         const t = d.tasks.find(x => x.id === taskId)
         if (!t) return
+        // 争议中的任务托管已冻结待裁决,直接下架会造成同一托管双重支付;须先裁决关闭争议
+        if (t.status === 'disputed') return
         // 如已有托管,全额退回
         if (escrowEntries(d, t.id).length) releaseEscrow(d, t, 0, t.points, '管理员下架')
         t.status = 'blocked'
@@ -604,7 +631,7 @@ function buildActions(setState: (fn: (s: AppState) => AppState) => void, getStat
 
     resetDemo() {
       localStorage.removeItem(STORAGE_KEY)
-      setState(() => buildSeedState())
+      setState(() => freshState())
     },
   }
 }

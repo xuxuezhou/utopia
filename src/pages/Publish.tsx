@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useStore, useCurrentUser, availablePoints } from '../lib/store'
-import { parseNaturalTask, assessRisk, suggestPoints, type ParsedDraft, type RiskResult } from '../lib/risk'
+import { parseNaturalTask, assessRisk, suggestPoints, localDateStr, type ParsedDraft, type RiskResult } from '../lib/risk'
 import { CATEGORY_META, type TaskCategory } from '../lib/types'
 import { TierBadge } from '../components/ui'
 
@@ -48,7 +48,7 @@ export default function Publish() {
       // 记录安全审核事件
       const res = actions.publishTask({
         title: text.slice(0, 24), description: text, category: 'other', online: false, publicPlace: true,
-        enterHome: false, date: new Date().toISOString().slice(0, 10), startTime: '12:00', durationMin: 60,
+        enterHome: false, date: localDateStr(new Date()), startTime: '12:00', durationMin: 60,
         locationText: '—', skillsRequired: [], headcount: 1, doneCriteria: '—', points: 50,
         visibility: 'nearby', deadline: '', cancelPolicy: '—', images: ['⚠️'],
       })
@@ -171,7 +171,11 @@ export default function Publish() {
             </div>
             <div>
               <label className="label">预计时长(分钟)</label>
-              <input type="number" className="input" value={duration} min={10} step={10} onChange={e => { setDuration(+e.target.value); recalcSuggest(+e.target.value, online, category) }} />
+              <input type="number" className="input" value={duration} min={10} step={10} onChange={e => {
+                const v = Math.trunc(+e.target.value)
+                const dur = Number.isFinite(v) && v > 0 ? v : 10
+                setDuration(dur); recalcSuggest(dur, online, category)
+              }} />
             </div>
             {!online && (
               <div>

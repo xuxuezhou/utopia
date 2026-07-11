@@ -1,5 +1,11 @@
 import type { RiskTier, TaskCategory } from './types'
 
+// 本地日期字符串 YYYY-MM-DD(避免 toISOString 的 UTC 偏移把"明天"解析成"今天")
+export function localDateStr(d: Date): string {
+  const p = (n: number) => String(n).padStart(2, '0')
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`
+}
+
 export interface RiskResult {
   tier: RiskTier
   flags: string[]
@@ -160,7 +166,7 @@ export function parseNaturalTask(text: string): ParsedDraft {
     if (diff === 0) diff = 7
     target.setDate(now.getDate() + diff)
   } else target.setDate(now.getDate() + 1)
-  const date = target.toISOString().slice(0, 10)
+  const date = localDateStr(target)
 
   // 时间
   let startTime = '14:00'

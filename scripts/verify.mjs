@@ -163,6 +163,34 @@ try {
     ok('路径4: 取消展示影响并结算', false, '没有可取消的已匹配任务')
   }
 
+  // ---------- 路径四+:取消 pending_confirm 任务,托管必须结算且账本平衡 ----------
+  // 种子 t20:u1 发布、u19 已提交完成(pending_confirm),托管锁定 42 pt
+  await page.goto(`${BASE}/#/`, { waitUntil: 'networkidle0' })
+  await sleep(200)
+  await page.goto(`${BASE}/#/task/t20`, { waitUntil: 'networkidle0' })
+  await sleep(500)
+  text = await bodyText(page)
+  const pcWarn = text.includes('帮助者已提交完成')
+  await clickByText(page, 'button', '取消任务')
+  await sleep(400)
+  text = await bodyText(page)
+  const pcImpact = text.includes('补偿给帮助者')
+  await page.type('textarea[placeholder*="尊重"]', '不需要了,非常抱歉')
+  await clickByText(page, 'button', '确认取消')
+  await sleep(600)
+  const pc = await page.evaluate(() => {
+    const s = JSON.parse(localStorage.getItem('utopia-state-v1'))
+    const entries = s.ledger.filter(e => e.taskId === 't20')
+    const stuck = entries.filter(e => e.status === 'locked' || e.status === 'frozen').length
+    const inflow = entries.filter(e => e.to === 'sys:escrow' && e.status !== 'reversed').reduce((a, e) => a + e.amount, 0)
+    const outflow = entries.filter(e => e.from === 'sys:escrow' && e.status !== 'reversed').reduce((a, e) => a + e.amount, 0)
+    const hasComp = entries.some(e => e.type === 'cancel_compensation' && e.to === 'u19')
+    return { stuck, inflow, outflow, hasComp, status: s.tasks.find(t => t.id === 't20')?.status }
+  })
+  ok('路径4+: 取消待确认任务→托管结算+补偿+账本平衡',
+    pcWarn && pcImpact && pc.status === 'cancelled' && pc.stuck === 0 && pc.hasComp && pc.inflow === pc.outflow,
+    `locked/frozen=${pc.stuck} in=${pc.inflow} out=${pc.outflow} comp=${pc.hasComp}`)
+
   // ---------- 路径五:争议(用种子中的 disputed 任务在后台裁决) ----------
   await page.goto(`${BASE}/#/admin/disputes`, { waitUntil: 'networkidle0' })
   await sleep(500)

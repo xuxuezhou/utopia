@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { useStore, useCurrentUser } from '../lib/store'
 import { TrustPassport, UserRow } from '../components/cards'
@@ -103,7 +103,8 @@ export default function TaskDetail() {
                     <div className="flex gap-2 mt-3">
                       <Link to={`/user/${u.id}`} className="btn-outline !py-1.5 flex-1">查看主页</Link>
                       <button className="btn-primary !py-1.5 flex-1" onClick={() => {
-                        actions.selectHelper(task.id, u.id)
+                        const res = actions.selectHelper(task.id, u.id)
+                        if (!res.ok) alert(res.reason)
                       }}>选择 TA(托管 {task.points + task.serviceFee} pt)</button>
                     </div>
                   </div>
@@ -173,7 +174,12 @@ export default function TaskDetail() {
           </div>
         )}
         {active && (isPublisher || isHelper) && (
-          <button className="btn-danger w-full" onClick={() => setModal('cancel')}>取消任务</button>
+          <div>
+            <button className="btn-danger w-full" onClick={() => setModal('cancel')}>取消任务</button>
+            {task.status === 'pending_confirm' && (
+              <p className="text-[11px] text-amber-600 mt-1.5 text-center">⚠ 帮助者已提交完成,此时取消将按临近取消补偿处理</p>
+            )}
+          </div>
         )}
         {!isPublisher && (
           <button className="btn-ghost w-full" onClick={() => setModal('report')}>🚩 举报该任务</button>
@@ -210,10 +216,13 @@ function Info({ label, value }: { label: string; value: string }) {
 function ExecutionPanel({ task, isPublisher, onConfirm, onDispute }: { task: Task; isPublisher: boolean; onConfirm: () => void; onDispute: () => void }) {
   const { actions } = useStore()
   const [elapsed, setElapsed] = useState(0)
-  useMemo(() => {
-    if (task.status === 'in_progress' && task.startedAt) {
-      setElapsed(Math.max(0, Math.floor((Date.now() - new Date(task.startedAt).getTime()) / 60000)))
-    }
+  useEffect(() => {
+    if (task.status !== 'in_progress' || !task.startedAt) return
+    const startedAt = task.startedAt
+    const tick = () => setElapsed(Math.max(0, Math.floor((Date.now() - new Date(startedAt).getTime()) / 60000)))
+    tick()
+    const timer = setInterval(tick, 60000)
+    return () => clearInterval(timer)
   }, [task.status, task.startedAt])
   const code = useMemo(() => String(((task.id.charCodeAt(1) || 7) * 1237) % 9000 + 1000), [task.id])
 
@@ -337,7 +346,8 @@ function CancelModal({ open, onClose, task }: { open: boolean; onClose: () => vo
   const [done, setDone] = useState('')
   const isPublisher = task.publisherId === me.id
   const hours = (new Date(`${task.date}T${task.startTime}:00`).getTime() - Date.now()) / 3600000
-  const near = hours < 24
+  // pending_confirm:对方已交付,取消一律按临近取消补偿处理(与 cancelTask 行为一致)
+  const near = hours < 24 || task.status === 'pending_confirm'
   const comp = Math.ceil(task.points * 0.2)
 
   return (
@@ -354,7 +364,7 @@ function CancelModal({ open, onClose, task }: { open: boolean; onClose: () => vo
             {!task.helperId ? '任务尚未匹配,可以直接关闭,没有积分变动。'
               : isPublisher
                 ? near
-                  ? `距开始不足 24 小时:${comp} pt 将补偿给帮助者,其余退回你的账户;你的可靠度会下降,多次临时取消将限制发布高价值任务。`
+                  ? `${task.status === 'pending_confirm' ? '帮助者已提交完成,此时取消将按临近取消处理' : '距开始不足 24 小时'}:${comp} pt 将补偿给帮助者,其余退回你的账户;你的可靠度会下降,多次临时取消将限制发布高价值任务。${task.status === 'pending_confirm' ? '如对完成结果有异议,建议发起争议而不是取消。' : ''}`
                   : `距开始还有 ${Math.round(hours)} 小时:托管积分将全额退回你的账户。`
                 : near
                   ? '临时取消:积分全额退回发布者,你的可靠度将明显降低;多次临时取消或无故未到场会暂时冻结认领权限。'

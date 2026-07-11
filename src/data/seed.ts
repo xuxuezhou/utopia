@@ -1410,37 +1410,37 @@ export function buildSeedState(): AppState {
       id: 'n1', userId: 'u1', icon: '✅',
       title: '申请已通过',
       body: '周明轩选择了你!「羽毛球陪练一小时」将于 7月12日 10:00 开始。',
-      link: 'task:t15', read: false, createdAt: '2026-07-08T15:45:00',
+      link: '/task/t15', read: false, createdAt: '2026-07-08T15:45:00',
     },
     {
       id: 'n2', userId: 'u1', icon: '📝',
       title: '收到新申请',
       body: '苏晚晴申请了你的任务「帮忙拍一组个人照片(求职用)」,共2位申请者待处理。',
-      link: 'task:t9', read: false, createdAt: '2026-07-09T14:40:00',
+      link: '/task/t9', read: false, createdAt: '2026-07-09T14:40:00',
     },
     {
       id: 'n3', userId: 'u1', icon: '⏰',
       title: '任务即将开始',
       body: '「代取图书馆预约的三本书」明天 12:30 开始,记得把预约码发给王浩然。',
-      link: 'task:t14', read: false, createdAt: '2026-07-10T09:00:00',
+      link: '/task/t14', read: false, createdAt: '2026-07-10T09:00:00',
     },
     {
       id: 'n4', userId: 'u1', icon: '💰',
       title: '积分到账',
       body: '「一对一Python入门辅导两小时」已确认完成,150 积分已释放到你的账户。',
-      link: 'ledger', read: true, createdAt: '2026-06-27T22:05:00',
+      link: '/points', read: true, createdAt: '2026-06-27T22:05:00',
     },
     {
       id: 'n5', userId: 'u1', icon: '⭐',
       title: '双向评价已公开',
       body: '你与白雨薇在「帮拍一组毕业纪念照」中的互评已公开:清晰沟通 5.0 / 愿意再次合作。',
-      link: 'task:t23', read: true, createdAt: '2026-07-04T10:05:00',
+      link: '/task/t23', read: true, createdAt: '2026-07-04T10:05:00',
     },
     {
       id: 'n6', userId: 'u1', icon: '🎯',
       title: '社区目标进展',
       body: '湖畔大学「本月完成500小时互助」已完成 68%,你贡献了 6 小时。',
-      link: 'community:c1', read: true, createdAt: '2026-07-09T20:00:00',
+      link: '/circle/c1', read: true, createdAt: '2026-07-09T20:00:00',
     },
   ]
 

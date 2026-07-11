@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
-import { useStore, poolBalance } from '../lib/store'
+import { useStore, poolBalance, availablePoints } from '../lib/store'
 import { LEDGER_TYPE_LABEL, type Task } from '../lib/types'
 import { Avatar, LevelBadge, Modal, Stat, StatusBadge, TierBadge } from '../components/ui'
 
@@ -55,7 +55,7 @@ function Overview() {
   const matchedPlus = tasks.filter(t => ['matched', 'starting_soon', 'in_progress', 'pending_confirm', 'completed', 'disputed'].includes(t.status)).length
   const published = tasks.filter(t => t.status !== 'blocked').length
   const cancelled = tasks.filter(t => t.status === 'cancelled').length
-  const circulating = state.users.reduce((a, u) => a + Math.max(0, state.ledger.reduce((b, e) => b + (e.to === u.id && e.status === 'settled' ? e.amount : 0) - (e.from === u.id ? e.amount : 0), 0)), 0)
+  const circulating = state.users.reduce((a, u) => a + Math.max(0, availablePoints(state, u.id)), 0)
   const locked = state.ledger.filter(e => e.status === 'locked' || e.status === 'frozen').reduce((a, e) => a + e.amount, 0)
   const issued = state.ledger.filter(e => e.from === 'sys:issuer').reduce((a, e) => a + e.amount, 0)
   const burned = state.ledger.filter(e => e.to === 'sys:burn').reduce((a, e) => a + e.amount, 0)
@@ -133,7 +133,10 @@ function Users() {
       <Modal open={!!target} onClose={() => setTarget('')} title={`账本调整 · ${u?.name ?? ''}`}>
         <p className="text-xs text-ink-400 mb-3">管理员不能直接修改余额。此操作会创建一条带审计记录的「人工调整」账本条目。</p>
         <div className="space-y-3">
-          <input type="number" className="input" placeholder="调整数量(负数为扣除)" value={amount || ''} onChange={e => setAmount(+e.target.value)} />
+          <input type="number" className="input" placeholder="调整数量(负数为扣除)" value={amount || ''} onChange={e => {
+            const v = Math.trunc(+e.target.value)
+            setAmount(Number.isFinite(v) ? v : 0)
+          }} />
           <input className="input" placeholder="依据(必填,将写入审计日志)" value={basis} onChange={e => setBasis(e.target.value)} />
           <button className="btn-primary w-full" disabled={!amount || !basis.trim()} onClick={() => {
             actions.adminAdjustLedger(target, amount, basis.trim())
@@ -169,7 +172,7 @@ function Tasks() {
           </div>
         )}
         {t.blockReason && <div className="text-xs bg-cream-100 rounded-lg p-2 mb-2">拦截原因:{t.blockReason}</div>}
-        {t.status !== 'blocked' && t.status !== 'completed' && t.status !== 'cancelled' && (
+        {t.status !== 'blocked' && t.status !== 'completed' && t.status !== 'cancelled' && t.status !== 'disputed' && (
           <button className="btn-danger !py-1 !text-xs" onClick={() => {
             const reason = prompt('下架原因(将通知用户并写入审计日志):', '违反社区安全规则')
             if (reason) actions.adminBlockTask(t.id, reason)
@@ -401,7 +404,7 @@ function Economy() {
   const issued = state.ledger.filter(e => e.from === 'sys:issuer' && e.status === 'settled').reduce((a, e) => a + e.amount, 0)
   const burned = state.ledger.filter(e => e.to === 'sys:burn').reduce((a, e) => a + e.amount, 0)
   const locked = state.ledger.filter(e => e.status === 'locked' || e.status === 'frozen').reduce((a, e) => a + e.amount, 0)
-  const balances = state.users.map(u => Math.max(0, state.ledger.reduce((b, e) => b + (e.to === u.id && e.status === 'settled' ? e.amount : 0) - (e.from === u.id ? e.amount : 0), 0)))
+  const balances = state.users.map(u => Math.max(0, availablePoints(state, u.id)))
   const circulating = balances.reduce((a, b) => a + b, 0)
   const zero = balances.filter(b => b === 0).length
   const avg = Math.round(circulating / Math.max(balances.length, 1))

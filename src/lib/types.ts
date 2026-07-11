@@ -286,6 +286,7 @@ export interface AuditLog {
 }
 
 export interface AppState {
+  schemaVersion?: number    // 持久化结构版本,不匹配时重建种子数据
   currentUserId: string | null
   onboarded: boolean
   users: User[]
