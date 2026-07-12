@@ -30,9 +30,9 @@ export default function Points() {
     <div className="max-w-3xl mx-auto">
       <h1 className="text-xl font-semibold mb-5">积分中心</h1>
 
-      <div className="card p-6 mb-4 bg-gradient-to-br from-amber-50 to-cream-50">
-        <div className="text-sm text-ink-400 mb-1">可用积分 Utopia Points</div>
-        <div className="text-4xl font-bold text-amber-600">{availablePoints(state, me.id)} <span className="text-lg font-medium">pt</span></div>
+      <div className="card p-6 mb-4 bg-gradient-to-br from-coral-50 to-white !border-coral-100">
+        <div className="text-sm text-ink-400 mb-1">Utopia Points</div>
+        <div className="text-4xl font-bold text-coral-500">{availablePoints(state, me.id)} <span className="text-lg font-medium">pt</span></div>
         <div className="grid grid-cols-3 gap-3 mt-5">
           <div><div className="text-xs text-ink-400">锁定积分</div><div className="font-semibold">{lockedPoints(state, me.id)} pt</div></div>
           <div><div className="text-xs text-ink-400">待结算</div><div className="font-semibold text-leaf-600">{pendingPoints(state, me.id)} pt</div></div>

@@ -15,6 +15,7 @@ import Points from './pages/Points'
 import Profile from './pages/Profile'
 import Trust from './pages/Trust'
 import Circles, { CircleDetail } from './pages/Circles'
+import SearchPage from './pages/SearchPage'
 import Safety from './pages/Safety'
 import Admin from './pages/Admin'
 
@@ -34,6 +35,7 @@ function App() {
           <Route path="/" element={<Feed />} />
           <Route path="/post/:id" element={<PostDetail />} />
           <Route path="/nearby" element={<Nearby />} />
+          <Route path="/search" element={<SearchPage />} />
           <Route path="/task/:id" element={<TaskDetail />} />
           <Route path="/publish" element={<Publish />} />
           <Route path="/mytasks" element={<MyTasks />} />

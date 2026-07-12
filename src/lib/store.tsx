@@ -9,7 +9,7 @@ import { buildSeedState } from '../data/seed'
 
 const STORAGE_KEY = 'utopia-state-v1'
 // 持久化结构版本:与 localStorage 中的状态不匹配时重建种子数据
-const SCHEMA_VERSION = 2
+const SCHEMA_VERSION = 3
 
 let seq = 1000
 export function genId(prefix: string): string {
@@ -506,6 +506,42 @@ function buildActions(setState: (fn: (s: AppState) => AppState) => void, getStat
       mutate(d => {
         const p = d.posts.find(x => x.id === postId)
         p?.comments.push({ id: genId('cm'), userId: d.currentUserId!, text, createdAt: nowISO() })
+      })
+    },
+    // 任务问答评论(公开;敏感信息引导私聊)
+    addTaskComment(taskId: string, text: string) {
+      mutate(d => {
+        const t = d.tasks.find(x => x.id === taskId)
+        if (!t) return
+        if (!t.comments) t.comments = []
+        t.comments.push({ id: genId('tc'), userId: d.currentUserId!, text, createdAt: nowISO() })
+        if (t.publisherId !== d.currentUserId)
+          notify(d, t.publisherId, '💬', '任务收到新提问', `「${t.title}」:${text.slice(0, 40)}`, `/task/${t.id}`)
+      })
+    },
+    toggleSaveTask(taskId: string): boolean {
+      let saved = false
+      mutate(d => {
+        if (!d.savedTasks) d.savedTasks = []
+        const i = d.savedTasks.indexOf(taskId)
+        if (i >= 0) d.savedTasks.splice(i, 1)
+        else { d.savedTasks.push(taskId); saved = true }
+      })
+      return saved
+    },
+    addOfferCard(text: string) {
+      mutate(d => {
+        const u = findUser(d, d.currentUserId!)
+        if (u && text.trim()) u.offerCards.unshift(text.trim())
+      })
+    },
+    addPost(p: { kind: 'story' | 'event' | 'skill' | 'thanks' | 'guide'; title: string; body: string; coverEmoji: string; communityId?: string; tags?: string[] }) {
+      mutate(d => {
+        d.posts.unshift({
+          id: genId('p'), authorId: d.currentUserId!, kind: p.kind, title: p.title, body: p.body,
+          coverEmoji: p.coverEmoji, coverHue: Math.floor(Math.random() * 360), communityId: p.communityId,
+          likes: 0, saves: 0, thanks: 0, comments: [], createdAt: nowISO(), tags: p.tags ?? [],
+        })
       })
     },
     publishStory(taskId: string, p: { title: string; body: string; hideName: boolean; coverEmoji: string }) {

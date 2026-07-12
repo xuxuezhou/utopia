@@ -124,6 +124,7 @@ export interface Task {
   chatId?: string
   reviews: Review[]
   storyId?: string
+  comments?: { id: string; userId: string; text: string; createdAt: string }[]  // 任务问答评论
   recommendReason?: string
 }
 
@@ -302,4 +303,5 @@ export interface AppState {
   auditLogs: AuditLog[]
   following: string[]       // 当前用户关注的用户/圈子 id
   feedFilter?: string
+  savedTasks?: string[]     // 当前用户收藏的任务
 }

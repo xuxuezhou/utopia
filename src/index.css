@@ -1,93 +1,130 @@
 @import "tailwindcss";
 
+/*
+ * 小红书式设计系统:
+ * 纯白背景 + 暖红 #FF3B4F 强调,原有色名(coral/cream/ink/leaf/violet/amber)
+ * 全部重映射到新色板,业务代码里的类名保持稳定。
+ */
 @theme {
-  --color-coral-50: #FDF1EE;
-  --color-coral-100: #FBDFD8;
-  --color-coral-200: #F6BEB0;
-  --color-coral-300: #F09A85;
-  --color-coral-400: #EC7F66;
-  --color-coral-500: #E5654A;
-  --color-coral-600: #D14E33;
-  --color-coral-700: #AE3E28;
+  /* Utopia Red(品牌暖红) */
+  --color-coral-50: #FFF1F3;
+  --color-coral-100: #FFE3E7;
+  --color-coral-200: #FFC6CD;
+  --color-coral-300: #FF95A0;
+  --color-coral-400: #FF5F70;
+  --color-coral-500: #FF3B4F;
+  --color-coral-600: #F52E44;
+  --color-coral-700: #E9263D;
 
-  --color-leaf-50: #EDF7F1;
-  --color-leaf-100: #D5EEDF;
-  --color-leaf-400: #4CAE7E;
-  --color-leaf-500: #3B9B6D;
-  --color-leaf-600: #2E7D57;
-  --color-leaf-700: #256648;
+  /* 成功/认证绿 */
+  --color-leaf-50: #EAF7F0;
+  --color-leaf-100: #D3EFE0;
+  --color-leaf-400: #3FBE77;
+  --color-leaf-500: #27AE60;
+  --color-leaf-600: #219653;
+  --color-leaf-700: #1B7A43;
 
-  --color-cream-50: #FCFAF6;
-  --color-cream-100: #F8F4EC;
-  --color-cream-200: #F1EADD;
-  --color-cream-300: #E5DBC9;
+  /* 中性灰(原 cream,页面以白为主) */
+  --color-cream-50: #FAFAFA;
+  --color-cream-100: #F7F7F7;
+  --color-cream-200: #F4F4F4;
+  --color-cream-300: #EEEEEE;
 
-  --color-ink-300: #A89F94;
-  --color-ink-400: #8A8177;
-  --color-ink-500: #6B635A;
-  --color-ink-700: #423C35;
-  --color-ink-900: #29241F;
+  /* 文字灰阶(原 ink) */
+  --color-ink-300: #B5B5B5;
+  --color-ink-400: #999999;
+  --color-ink-500: #666666;
+  --color-ink-700: #333333;
+  --color-ink-900: #222222;
 
-  --color-violet-50: #F3F0FA;
-  --color-violet-100: #E5DFF4;
-  --color-violet-400: #9C8AD1;
-  --color-violet-500: #8471BE;
-  --color-violet-600: #6C5AA6;
+  /* 信息蓝(原 violet,用于推荐理由/社交关系) */
+  --color-violet-50: #F0F4FF;
+  --color-violet-100: #E1EAFE;
+  --color-violet-400: #7396FE;
+  --color-violet-500: #4D7CFE;
+  --color-violet-600: #3D63D9;
 
-  --color-amber-50: #FBF4E4;
-  --color-amber-100: #F6E7C4;
-  --color-amber-500: #C98F1F;
-  --color-amber-600: #A87513;
+  /* 警示琥珀(小面积辅助) */
+  --color-amber-50: #FEF6E7;
+  --color-amber-100: #FCEBC8;
+  --color-amber-500: #F5A623;
+  --color-amber-600: #D8890B;
 
-  --font-sans: -apple-system, BlinkMacSystemFont, "PingFang SC", "Hiragino Sans GB", "Noto Sans SC", "Microsoft YaHei", "Segoe UI", sans-serif;
+  --font-sans: Inter, -apple-system, BlinkMacSystemFont, "PingFang SC", "Noto Sans CJK SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
 
-  --shadow-card: 0 1px 2px rgba(41, 36, 31, 0.04), 0 4px 16px rgba(41, 36, 31, 0.06);
-  --shadow-card-hover: 0 2px 4px rgba(41, 36, 31, 0.06), 0 8px 28px rgba(41, 36, 31, 0.10);
-  --shadow-nav: 0 1px 0 rgba(41, 36, 31, 0.06);
+  /* 阴影只给浮层用 */
+  --shadow-card: 0 4px 16px rgba(0, 0, 0, 0.06);
+  --shadow-card-hover: 0 6px 24px rgba(0, 0, 0, 0.10);
+  --shadow-nav: 0 1px 0 #F4F4F4;
 }
 
 body {
-  @apply bg-cream-100 text-ink-900 font-sans antialiased;
+  @apply bg-white text-ink-700 font-sans antialiased;
 }
 
-/* 卡片 */
+/* 容器:白底 + 极浅描边,信息流卡片不用它 */
 .card {
-  @apply bg-white rounded-2xl shadow-card;
+  @apply bg-white rounded-2xl border border-cream-200;
 }
 .card-hover {
-  @apply transition-all duration-200 hover:shadow-card-hover hover:-translate-y-0.5;
+  @apply transition-opacity duration-150 active:opacity-80;
 }
 
-/* 按钮 */
+/* 浮层(下拉/弹窗/悬浮卡) */
+.pop {
+  @apply bg-white rounded-2xl shadow-card;
+}
+
+/* 按钮:胶囊形 */
 .btn, .btn-primary, .btn-secondary, .btn-ghost, .btn-green, .btn-outline, .btn-danger {
-  @apply inline-flex items-center justify-center gap-1.5 rounded-xl font-medium transition-colors
+  @apply inline-flex items-center justify-center gap-1.5 rounded-full font-medium transition-colors
     px-4 py-2 text-sm cursor-pointer select-none disabled:opacity-40 disabled:cursor-not-allowed;
 }
-.btn-primary { @apply bg-coral-500 text-white hover:bg-coral-600; }
+.btn-primary { @apply bg-coral-500 text-white hover:bg-coral-600 active:bg-coral-700; }
 .btn-secondary { @apply bg-coral-50 text-coral-600 hover:bg-coral-100; }
-.btn-ghost { @apply text-ink-500 hover:bg-cream-200 hover:text-ink-700; }
+.btn-ghost { @apply text-ink-500 hover:bg-cream-100 hover:text-ink-700; }
 .btn-green { @apply bg-leaf-500 text-white hover:bg-leaf-600; }
-.btn-outline { @apply border border-cream-300 text-ink-700 hover:bg-cream-100 bg-white; }
+.btn-outline { @apply border border-cream-300 text-ink-700 hover:bg-cream-50 bg-white; }
 .btn-danger { @apply bg-white border border-coral-200 text-coral-600 hover:bg-coral-50; }
 
 /* 徽章 */
 .chip {
-  @apply inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium;
+  @apply inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium whitespace-nowrap;
 }
 
-/* 输入 */
+/* 输入:浅灰底、无明显边框 */
 .input {
-  @apply w-full rounded-xl border border-cream-300 bg-white px-3.5 py-2.5 text-sm text-ink-900
-    placeholder:text-ink-300 focus:outline-none focus:ring-2 focus:ring-coral-300 focus:border-coral-300 transition;
+  @apply w-full rounded-xl border border-transparent bg-cream-100 px-3.5 py-2.5 text-sm text-ink-900
+    placeholder:text-ink-300 focus:outline-none focus:bg-white focus:border-cream-300 transition;
 }
 .label { @apply block text-xs font-medium text-ink-500 mb-1.5; }
 
 /* 滚动条 */
 ::-webkit-scrollbar { width: 6px; height: 6px; }
-::-webkit-scrollbar-thumb { background: var(--color-cream-300); border-radius: 3px; }
+::-webkit-scrollbar-thumb { background: #EEEEEE; border-radius: 3px; }
+.no-scrollbar::-webkit-scrollbar { display: none; }
+.no-scrollbar { scrollbar-width: none; }
 
-.masonry { column-gap: 1rem; }
-.masonry > * { break-inside: avoid; margin-bottom: 1rem; }
+/* 瀑布流 */
+.masonry { column-gap: 8px; }
+.masonry > * { break-inside: avoid; margin-bottom: 18px; }
 
-@keyframes fade-up { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
-.fade-up { animation: fade-up .35s ease both; }
+@keyframes fade-up { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+.fade-up { animation: fade-up .25s ease both; }
+
+@keyframes sheet-up { from { transform: translateY(24px); opacity: 0.6; } to { transform: none; opacity: 1; } }
+.sheet-up { animation: sheet-up .22s ease both; }
+
+@keyframes toast-in { 0% { opacity: 0; transform: translate(-50%, 8px); } 12% { opacity: 1; transform: translate(-50%, 0); } 88% { opacity: 1; } 100% { opacity: 0; } }
+.toast-anim { animation: toast-in 2s ease both; }
+
+@keyframes like-pop { 0% { transform: scale(1); } 45% { transform: scale(1.25); } 100% { transform: scale(1); } }
+.like-pop { animation: like-pop .22s ease; }
+
+/* 图片骨架 */
+@keyframes skeleton { 0% { background-position: 100% 0; } 100% { background-position: -100% 0; } }
+.skeleton {
+  background: linear-gradient(90deg, #F4F4F4 25%, #FAFAFA 50%, #F4F4F4 75%);
+  background-size: 200% 100%;
+  animation: skeleton 1.2s infinite linear;
+}

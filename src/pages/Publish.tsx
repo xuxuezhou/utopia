@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom'
 import { useStore, useCurrentUser, availablePoints } from '../lib/store'
 import { parseNaturalTask, assessRisk, suggestPoints, localDateStr, type ParsedDraft, type RiskResult } from '../lib/risk'
 import { CATEGORY_META, type TaskCategory } from '../lib/types'
-import { TierBadge } from '../components/ui'
+import { TierBadge, toast } from '../components/ui'
 
 const EXAMPLES = [
   '我想找一个人周日下午陪我打一个小时网球,最好是中等水平,在学校附近。',
@@ -233,21 +233,31 @@ export default function Publish() {
 
   return (
     <div className="max-w-xl mx-auto fade-up">
-      <h1 className="text-2xl font-semibold mb-2 mt-6">你现在需要什么帮助?</h1>
-      <p className="text-sm text-ink-400 mb-6">用一句话描述,系统会帮你整理成结构化请求。求助不是麻烦别人,而是给别人一个帮助你的机会。</p>
-      <div className="card p-5">
-        <textarea className="input !text-base" rows={4} autoFocus
-          placeholder="比如:我想找一个人周日下午陪我打一个小时网球,最好是中等水平,在学校附近。"
-          value={input} onChange={e => setInput(e.target.value)} />
-        <button className="btn-primary w-full !py-3 mt-3" disabled={input.trim().length < 6} onClick={() => analyze(input.trim())}>
-          ✨ 帮我整理成任务
-        </button>
+      <h1 className="text-[22px] font-semibold mb-1.5 mt-4">你需要什么帮助?</h1>
+      <p className="text-sm text-ink-400 mb-5">像发朋友圈一样说出来就行,系统会帮你整理。求助不是麻烦别人,而是给别人一个帮助你的机会。</p>
+      <textarea
+        className="w-full bg-cream-100 rounded-2xl px-4 py-3.5 text-[15px] leading-relaxed outline-none placeholder:text-ink-300 focus:bg-cream-50 transition min-h-36"
+        autoFocus
+        placeholder="比如:我想找一个人周日下午陪我打一个小时网球,最好是中等水平,在学校附近。"
+        value={input} onChange={e => setInput(e.target.value)} />
+      <div className="flex flex-wrap gap-2 mt-3">
+        {[
+          { label: '📷 添加图片', act: () => toast('演示版会自动生成封面') },
+          { label: '📍 添加地点', act: () => setInput(v => v.trim() ? v.replace(/。?$/, ',在') : '在') },
+          { label: '🕐 添加时间', act: () => setInput(v => (v.trim() ? v.replace(/。?$/, ',') : '') + '周六下午') },
+          { label: '👥 选择社区', act: () => toast('可在下一步选择可见范围') },
+        ].map(c => (
+          <button key={c.label} className="chip bg-cream-100 text-ink-500 !py-2 !px-3.5 cursor-pointer hover:bg-cream-200" onClick={c.act}>{c.label}</button>
+        ))}
       </div>
-      <div className="mt-5">
-        <div className="text-xs text-ink-400 mb-2">试试这些:</div>
-        <div className="space-y-2">
+      <button className="btn-primary w-full !py-3 mt-4" disabled={input.trim().length < 6} onClick={() => analyze(input.trim())}>
+        下一步
+      </button>
+      <div className="mt-6">
+        <div className="text-xs text-ink-400 mb-2.5">大家都在找:</div>
+        <div className="space-y-1.5">
           {EXAMPLES.map(e => (
-            <button key={e} className="block w-full text-left text-sm text-ink-500 bg-white rounded-xl px-4 py-3 hover:bg-coral-50 transition cursor-pointer shadow-card"
+            <button key={e} className="block w-full text-left text-sm text-ink-500 rounded-xl px-3.5 py-2.5 hover:bg-cream-50 transition cursor-pointer border border-cream-200"
               onClick={() => setInput(e)}>{e}</button>
           ))}
         </div>

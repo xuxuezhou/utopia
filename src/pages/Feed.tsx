@@ -1,149 +1,216 @@
 import { useMemo, useState } from 'react'
-import { Link, useParams } from 'react-router-dom'
+import { Link, useNavigate, useParams } from 'react-router-dom'
+import { Heart, Star, Search, HandHeart } from 'lucide-react'
 import { useStore } from '../lib/store'
 import { PostCard, TaskCard } from '../components/cards'
-import { Avatar, Empty, fmtTime } from '../components/ui'
+import { Avatar, Empty, VerifyDot, fmtTime, toast } from '../components/ui'
+import type { ContentPost, Task, TaskCategory } from '../lib/types'
 
-const FILTERS = [
-  { key: 'all', label: '全部' },
-  { key: 'story', label: '互助故事' },
-  { key: 'event', label: '社区活动' },
-  { key: 'skill', label: '技能分享' },
-  { key: 'thanks', label: '感谢笔记' },
-  { key: 'guide', label: '生活指南' },
+type FeedItem = { kind: 'post'; post: ContentPost; at: string } | { kind: 'task'; task: Task; at: string }
+
+const CHANNELS: { key: string; label: string; cats?: TaskCategory[]; postTags?: string[] }[] = [
+  { key: 'rec', label: '推荐' },
+  { key: 'urgent', label: '即时帮助', cats: ['errand', 'digital', 'moving', 'other'] },
+  { key: 'sports', label: '运动', cats: ['sports'] },
+  { key: 'company', label: '陪伴', cats: ['chat', 'companion'] },
+  { key: 'study', label: '学习', cats: ['tutoring', 'language'] },
+  { key: 'errand', label: '跑腿', cats: ['errand', 'moving'] },
+  { key: 'pet', label: '宠物', cats: ['pet'] },
+  { key: 'skill', label: '技能', cats: ['photography', 'digital', 'installation'] },
+  { key: 'community', label: '社区', cats: ['newcomer', 'community'] },
+  { key: 'charity', label: '公益', cats: ['community'] },
 ]
 
 export default function Feed() {
   const { state } = useStore()
-  const [tab, setTab] = useState<'discover' | 'nearby'>('discover')
-  const [filter, setFilter] = useState('all')
+  const nav = useNavigate()
+  const [tab, setTab] = useState<'follow' | 'discover' | 'nearby'>('discover')
+  const [channel, setChannel] = useState('rec')
 
-  const posts = useMemo(() => {
-    let list = state.posts
-    if (filter !== 'all') list = list.filter(p => p.kind === filter || (filter === 'story' && p.kind === 'milestone'))
+  const items = useMemo<FeedItem[]>(() => {
+    const ch = CHANNELS.find(c => c.key === channel)!
+    const openTasks = state.tasks.filter(t => ['open', 'applied'].includes(t.status))
+    const posts = state.posts
+
+    let list: FeedItem[] = []
+    if (tab === 'follow') {
+      list = [
+        ...posts.filter(p => state.following.includes(p.authorId)).map(p => ({ kind: 'post' as const, post: p, at: p.createdAt })),
+        ...openTasks.filter(t => state.following.includes(t.publisherId)).map(t => ({ kind: 'task' as const, task: t, at: t.createdAt })),
+      ]
+    } else if (tab === 'nearby') {
+      list = openTasks
+        .slice().sort((a, b) => (a.online ? 99 : a.distanceKm) - (b.online ? 99 : b.distanceKm))
+        .map(t => ({ kind: 'task' as const, task: t, at: t.createdAt }))
+    } else {
+      list = [
+        ...posts.map(p => ({ kind: 'post' as const, post: p, at: p.createdAt })),
+        ...openTasks.map(t => ({ kind: 'task' as const, task: t, at: t.createdAt })),
+      ].sort((a, b) => b.at.localeCompare(a.at))
+    }
+
+    if (ch.cats) {
+      list = list.filter(it => it.kind === 'task'
+        ? ch.cats!.includes(it.task.category)
+        : (ch.key === 'community' ? !!it.post.communityId : ch.key === 'skill' ? it.post.kind === 'skill' : ch.key === 'charity' ? it.post.kind === 'event' : false))
+    }
     return list
-  }, [state.posts, filter])
-
-  const nearbyTasks = useMemo(() =>
-    state.tasks.filter(t => ['open', 'applied'].includes(t.status) && t.publisherId !== state.currentUserId),
-  [state.tasks, state.currentUserId])
+  }, [state.tasks, state.posts, state.following, tab, channel])
 
   return (
-    <div>
-      {/* Tab 切换 */}
-      <div className="flex items-center gap-6 mb-5">
-        {([['discover', '发现'], ['nearby', '附近互助']] as const).map(([k, label]) => (
-          <button key={k} onClick={() => setTab(k)}
-            className={`text-lg font-semibold pb-1 border-b-2 transition cursor-pointer ${tab === k ? 'text-ink-900 border-coral-500' : 'text-ink-300 border-transparent hover:text-ink-500'}`}>
-            {label}
-          </button>
-        ))}
-        <div className="flex-1" />
-        {tab === 'discover' && (
-          <div className="hidden sm:flex gap-1.5">
-            {FILTERS.map(f => (
-              <button key={f.key} onClick={() => setFilter(f.key)}
-                className={`chip cursor-pointer ${filter === f.key ? 'bg-ink-900 text-white' : 'bg-white text-ink-500 hover:bg-cream-200'}`}>{f.label}</button>
+    <div className="-mt-1">
+      {/* 移动端顶栏:文字 Tab + 搜索 */}
+      <div className="md:hidden sticky top-0 z-30 bg-white/95 backdrop-blur -mx-3 px-3">
+        <div className="flex items-center h-11">
+          <div className="flex-1 flex items-center justify-center gap-7">
+            {([['follow', '关注'], ['discover', '发现'], ['nearby', '附近']] as const).map(([k, label]) => (
+              <button key={k} onClick={() => setTab(k)}
+                className={`relative py-2 text-[16px] cursor-pointer transition-colors ${tab === k ? 'text-ink-900 font-semibold' : 'text-ink-400'}`}>
+                {label}
+                {tab === k && <span className="absolute left-1/2 -translate-x-1/2 bottom-0.5 w-5 h-[3px] rounded-full bg-coral-500" />}
+              </button>
             ))}
           </div>
-        )}
+          <button className="p-2 text-ink-700 cursor-pointer" onClick={() => nav('/search')} aria-label="搜索">
+            <Search size={20} strokeWidth={1.8} />
+          </button>
+        </div>
       </div>
 
-      {tab === 'discover' ? (
-        <div className="masonry columns-2 md:columns-3 lg:columns-4">
-          {posts.map(p => <PostCard key={p.id} post={p} />)}
-        </div>
+      {/* 桌面端 Tab */}
+      <div className="hidden md:flex items-center gap-6 mb-1">
+        {([['follow', '关注'], ['discover', '发现'], ['nearby', '附近']] as const).map(([k, label]) => (
+          <button key={k} onClick={() => setTab(k)}
+            className={`relative pb-2 text-[17px] cursor-pointer transition-colors ${tab === k ? 'text-ink-900 font-semibold' : 'text-ink-400 hover:text-ink-600'}`}>
+            {label}
+            {tab === k && <span className="absolute left-1/2 -translate-x-1/2 bottom-0 w-5 h-[3px] rounded-full bg-coral-500" />}
+          </button>
+        ))}
+      </div>
+
+      {/* 频道 */}
+      <div className="flex gap-5 overflow-x-auto no-scrollbar py-2.5 mb-1 -mx-3 px-3 md:mx-0 md:px-0">
+        {CHANNELS.map(c => (
+          <button key={c.key} onClick={() => setChannel(c.key)}
+            className={`shrink-0 text-sm cursor-pointer transition-colors ${channel === c.key ? 'text-ink-900 font-semibold' : 'text-ink-400'}`}>
+            {c.label}
+          </button>
+        ))}
+      </div>
+
+      {items.length === 0 ? (
+        <Empty icon={tab === 'follow' ? '👀' : '🌿'} text={tab === 'follow' ? '关注一些有意思的邻居,这里就会热闹起来。' : '这个频道暂时安静,换一个看看。'} />
       ) : (
-        <div>
-          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {nearbyTasks.map(t => <TaskCard key={t.id} task={t} />)}
-          </div>
-          <div className="text-center mt-6">
-            <Link to="/nearby" className="btn-outline">查看全部附近任务 →</Link>
-          </div>
+        <div className="masonry columns-2 md:columns-3 lg:columns-4 xl:columns-5">
+          {items.map(it => it.kind === 'post'
+            ? <PostCard key={`p${it.post.id}`} post={it.post} />
+            : <TaskCard key={`t${it.task.id}`} task={it.task} />)}
         </div>
       )}
     </div>
   )
 }
 
-// ============ 内容详情 ============
+// ============ 内容详情(小红书式笔记页) ============
 export function PostDetail() {
   const { id } = useParams()
   const { state, actions } = useStore()
+  const nav = useNavigate()
   const [comment, setComment] = useState('')
   const post = state.posts.find(p => p.id === id)
   if (!post) return <Empty text="内容不存在或已删除" />
   const author = state.users.find(u => u.id === post.authorId)
   const task = state.tasks.find(t => t.id === post.taskId)
+  const community = state.communities.find(c => c.id === post.communityId)
+  const following = author ? state.following.includes(author.id) : false
 
   return (
-    <div className="max-w-2xl mx-auto">
-      <div className="card overflow-hidden fade-up">
-        <div className="h-52 flex items-center justify-center text-8xl"
-          style={{ background: `linear-gradient(135deg, oklch(0.95 0.04 ${post.coverHue}), oklch(0.9 0.06 ${(post.coverHue + 40) % 360}))` }}>
-          {post.coverEmoji}
-        </div>
-        <div className="p-6">
-          <div className="flex items-center gap-3 mb-4">
-            <Avatar user={author} size={40} />
-            <div className="flex-1">
-              <Link to={`/user/${author?.id}`} className="font-medium text-sm">{author?.name}</Link>
-              <div className="text-xs text-ink-300">{fmtTime(post.createdAt)}</div>
-            </div>
-            {author && state.currentUserId !== author.id && (
-              <button className={`btn ${state.following.includes(author.id) ? 'btn-outline' : 'btn-secondary'} !py-1 !px-3 !text-xs`}
-                onClick={() => actions.toggleFollow(author.id)}>
-                {state.following.includes(author.id) ? '已关注' : '＋ 关注'}
-              </button>
-            )}
-          </div>
-          <h1 className="text-xl font-semibold mb-3">{post.title}</h1>
-          <p className="text-[15px] text-ink-700 leading-relaxed whitespace-pre-line">{post.body}</p>
-          {task && (
-            <Link to={`/task/${task.id}`} className="block mt-4 p-3 rounded-xl bg-leaf-50 text-sm hover:bg-leaf-100 transition">
-              ✓ 来源于真实完成的互助任务:「{task.title}」({task.points} pt)
-            </Link>
-          )}
-          <div className="flex flex-wrap gap-1.5 mt-4">
-            {post.tags.map(t => <span key={t} className="chip bg-cream-200 text-ink-400"># {t}</span>)}
-          </div>
-          <div className="flex items-center gap-4 mt-5 pt-4 border-t border-cream-200 text-sm">
-            <button className="cursor-pointer hover:scale-105 transition" onClick={() => actions.toggleReaction(post.id, 'like')}>
-              {post.likedByMe ? '❤️' : '🤍'} 点赞 {post.likes}
-            </button>
-            <button className="cursor-pointer hover:scale-105 transition" onClick={() => actions.toggleReaction(post.id, 'save')}>
-              {post.savedByMe ? '⭐' : '☆'} 收藏 {post.saves}
-            </button>
-            <button className="cursor-pointer hover:scale-105 transition" onClick={() => actions.toggleReaction(post.id, 'thank')}>
-              🙏 感谢 {post.thanks}
-            </button>
-          </div>
-        </div>
+    <div className="max-w-xl mx-auto pb-20">
+      {/* 封面 */}
+      <div className="-mx-3 md:mx-0 relative">
+        <PostCover post={post} />
+        <button className="absolute left-3 top-3 w-8 h-8 rounded-full bg-black/30 text-white flex items-center justify-center cursor-pointer backdrop-blur" onClick={() => nav(-1)}>←</button>
+        <span className="absolute right-3 top-3 chip bg-black/35 text-white backdrop-blur">1 / 1</span>
       </div>
 
-      <div className="card p-5 mt-4">
-        <h3 className="font-semibold text-sm mb-3">评论 {post.comments.length}</h3>
-        <div className="space-y-3 mb-4">
+      {/* 作者行 */}
+      <div className="flex items-center gap-2.5 py-3.5">
+        <Avatar user={author} size={38} />
+        <div className="flex-1 min-w-0">
+          <Link to={`/user/${author?.id}`} className="text-sm font-medium text-ink-900 flex items-center gap-1">
+            {author?.name} {author && <VerifyDot level={author.level} />}
+          </Link>
+          <div className="text-xs text-ink-300">{community ? `${community.name} · ` : ''}{fmtTime(post.createdAt)}</div>
+        </div>
+        {author && state.currentUserId !== author.id && (
+          <button className={`btn !py-1.5 !px-4 !text-[13px] ${following ? 'bg-cream-100 text-ink-400' : 'border border-coral-500 text-coral-500 hover:bg-coral-50'}`}
+            onClick={() => { actions.toggleFollow(author.id); toast(following ? '已取消关注' : '已关注') }}>
+            {following ? '已关注' : '关注'}
+          </button>
+        )}
+      </div>
+
+      <h1 className="text-[19px] font-semibold text-ink-900 leading-snug mb-2">{post.title}</h1>
+      <p className="text-[15px] text-ink-700 leading-[1.7] whitespace-pre-line">{post.body}</p>
+      <div className="flex flex-wrap gap-x-3 gap-y-1 mt-3 text-sm text-violet-500">
+        {post.tags.map(t => <span key={t}>#{t}</span>)}
+      </div>
+
+      {task && (
+        <Link to={`/task/${task.id}`} className="flex items-center gap-2 mt-4 bg-cream-100 rounded-xl px-4 py-3 text-sm text-ink-700 hover:bg-cream-200 transition">
+          <HandHeart size={17} className="text-leaf-500" strokeWidth={1.8} />
+          来源于真实完成的互助:「{task.title}」<span className="text-coral-500 font-medium ml-auto shrink-0">{task.points} pt</span>
+        </Link>
+      )}
+
+      {/* 互动行 */}
+      <div className="flex items-center gap-6 py-4 border-b border-cream-200 text-sm text-ink-500">
+        <button className="flex items-center gap-1.5 cursor-pointer" onClick={() => actions.toggleReaction(post.id, 'like')}>
+          <Heart size={19} strokeWidth={1.8} className={post.likedByMe ? 'fill-coral-500 text-coral-500 like-pop' : ''} /> {post.likes}
+        </button>
+        <button className="flex items-center gap-1.5 cursor-pointer" onClick={() => { actions.toggleReaction(post.id, 'save'); if (!post.savedByMe) toast('已收藏') }}>
+          <Star size={19} strokeWidth={1.8} className={post.savedByMe ? 'fill-amber-500 text-amber-500' : ''} /> {post.saves}
+        </button>
+        <button className="flex items-center gap-1.5 cursor-pointer" onClick={() => { actions.toggleReaction(post.id, 'thank'); if (!post.thankedByMe) toast('已感谢') }}>
+          🙏 {post.thanks}
+        </button>
+      </div>
+
+      {/* 评论 */}
+      <div className="py-4">
+        <div className="text-sm text-ink-400 mb-4">共 {post.comments.length} 条评论</div>
+        <div className="space-y-4 mb-5">
           {post.comments.map(c => {
             const u = state.users.find(x => x.id === c.userId)
             return (
               <div key={c.id} className="flex gap-2.5">
-                <Avatar user={u} size={30} />
-                <div>
-                  <div className="text-xs text-ink-400">{u?.name} · {fmtTime(c.createdAt)}</div>
-                  <div className="text-sm mt-0.5">{c.text}</div>
+                <Avatar user={u} size={32} />
+                <div className="min-w-0">
+                  <div className="text-xs text-ink-400">{u?.name}</div>
+                  <div className="text-sm text-ink-700 mt-0.5 leading-relaxed">{c.text}</div>
+                  <div className="text-[11px] text-ink-300 mt-1">{fmtTime(c.createdAt)}</div>
                 </div>
               </div>
             )
           })}
         </div>
         <div className="flex gap-2">
-          <input className="input" placeholder="说点温暖的话…" value={comment} onChange={e => setComment(e.target.value)}
+          <input className="input !rounded-full" placeholder="说点温暖的话…" value={comment} onChange={e => setComment(e.target.value)}
             onKeyDown={e => { if (e.key === 'Enter' && comment.trim()) { actions.addComment(post.id, comment.trim()); setComment('') } }} />
-          <button className="btn-primary" disabled={!comment.trim()} onClick={() => { actions.addComment(post.id, comment.trim()); setComment('') }}>发送</button>
+          <button className="btn-primary shrink-0" disabled={!comment.trim()} onClick={() => { actions.addComment(post.id, comment.trim()); setComment('') }}>发送</button>
         </div>
       </div>
+    </div>
+  )
+}
+
+function PostCover({ post }: { post: ContentPost }) {
+  const [broken, setBroken] = useState(false)
+  return (
+    <div className="relative w-full overflow-hidden md:rounded-2xl bg-cream-100" style={{ aspectRatio: '4/3' }}>
+      {!broken
+        ? <img src={`https://picsum.photos/seed/utopia-${post.id}/800/600`} alt="" className="absolute inset-0 w-full h-full object-cover" onError={() => setBroken(true)} />
+        : <div className="absolute inset-0 flex items-center justify-center text-7xl" style={{ background: `linear-gradient(160deg, oklch(0.97 0.02 ${post.coverHue}), oklch(0.93 0.04 ${(post.coverHue + 30) % 360}))` }}>{post.coverEmoji}</div>}
     </div>
   )
 }

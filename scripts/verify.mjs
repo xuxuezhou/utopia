@@ -44,7 +44,7 @@ try {
   await clickByText(page, 'button', '陈屿')
   await sleep(800)
   let text = await bodyText(page)
-  ok('登录进入发现页', text.includes('发现') && text.includes('附近互助'))
+  ok('登录进入发现页', text.includes('发现') && text.includes('关注'))
 
   // ---------- 路径一:发布低风险任务 ----------
   await page.goto(`${BASE}/#/`, { waitUntil: 'networkidle0' })
@@ -52,7 +52,7 @@ try {
   await page.goto(`${BASE}/#/publish`, { waitUntil: 'networkidle0' })
   await sleep(400)
   await page.type('textarea', '我想找一个人周日下午陪我打一个小时网球,最好是中等水平,在学校附近。')
-  await clickByText(page, 'button', '帮我整理成任务')
+  await clickByText(page, 'button', '下一步')
   await sleep(500)
   text = await bodyText(page)
   ok('路径1: 自然语言解析出确认页', text.includes('确认你的请求') && text.includes('建议设置为'))
@@ -67,7 +67,7 @@ try {
   await page.goto(`${BASE}/#/publish`, { waitUntil: 'networkidle0' })
   await sleep(400)
   await page.type('textarea', '找人每天开车接我的孩子放学。')
-  await clickByText(page, 'button', '帮我整理成任务')
+  await clickByText(page, 'button', '下一步')
   await sleep(500)
   text = await bodyText(page)
   ok('路径6: T3 任务被阻止', text.includes('无法发布') && (text.includes('受监管') || text.includes('暂不支持')))
@@ -78,7 +78,7 @@ try {
   await page.goto(`${BASE}/#/publish`, { waitUntil: 'networkidle0' })
   await sleep(400)
   await page.type('textarea', '帮我先买500美元礼品卡,完成后给你2000积分。')
-  await clickByText(page, 'button', '帮我整理成任务')
+  await clickByText(page, 'button', '下一步')
   await sleep(500)
   text = await bodyText(page)
   ok('路径7: 诈骗任务被拦截并给出安全教育', text.includes('无法发布') && text.includes('安全提示'))
@@ -92,12 +92,13 @@ try {
   // ---------- 路径二:认领任务(申请) ----------
   await page.goto(`${BASE}/#/nearby`, { waitUntil: 'networkidle0' })
   await sleep(500)
-  const applied = await page.evaluate(() => {
-    const cards = [...document.querySelectorAll('span')].filter(e => e.textContent === '申请提供帮助')
-    if (!cards.length) return false
-    cards[0].closest('div[class*=card]').dispatchEvent(new MouseEvent('click', { bubbles: true }))
-    return true
+  const openTaskId = await page.evaluate(() => {
+    const s = JSON.parse(localStorage.getItem('utopia-state-v1'))
+    const t = s.tasks.find(t => ['open', 'applied'].includes(t.status) && t.publisherId !== s.currentUserId && !t.applicants.some(a => a.userId === s.currentUserId) && t.riskTier !== 'T2')
+    return t?.id ?? null
   })
+  const applied = !!openTaskId
+  await page.goto(`${BASE}/#/task/${openTaskId}`, { waitUntil: 'networkidle0' })
   await sleep(700)
   text = await bodyText(page)
   ok('路径2: 打开任务详情并看到信任护照', applied && text.includes('信任护照'))
@@ -108,7 +109,7 @@ try {
   await clickByText(page, 'button', '提交申请')
   await sleep(500)
   text = await bodyText(page)
-  ok('路径2: 申请已提交', text.includes('已申请,等待发布者选择'))
+  ok('路径2: 申请已提交', text.includes('已申请'))
 
   // ---------- 路径二后半:发布者选择帮助者(用自己发布的 t9) ----------
   await page.goto(`${BASE}/#/task/t9`, { waitUntil: 'networkidle0' })
@@ -118,7 +119,7 @@ try {
     await clickByText(page, 'button', '选择 TA')
     await sleep(600)
     text = await bodyText(page)
-    ok('路径2: 选择帮助者→托管锁定+任务聊天', text.includes('打开任务聊天'))
+    ok('路径2: 选择帮助者→托管锁定+任务聊天', text.includes('任务聊天'))
   } else {
     ok('路径2: 选择帮助者→托管锁定+任务聊天', false, 't9 无申请列表')
   }

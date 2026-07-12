@@ -1,17 +1,21 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
+import { ArrowLeft, Calendar, Star, MapPin, Share2, Sparkles, Users, CircleCheck, MessageCircle } from 'lucide-react'
 import { useStore, useCurrentUser } from '../lib/store'
 import { TrustPassport, UserRow } from '../components/cards'
-import { Avatar, CategoryChip, Empty, LevelBadge, Modal, Points, StatusBadge, TierBadge, fmtDate } from '../components/ui'
-import type { Review, Task } from '../lib/types'
+import { Avatar, Empty, Modal, StatusBadge, TierBadge, VerifyDot, fmtDate, fmtTime, toast } from '../components/ui'
+import { CATEGORY_META, type Review, type Task } from '../lib/types'
 
 export default function TaskDetail() {
   const { id } = useParams()
   const { state, actions } = useStore()
   const me = useCurrentUser()
-  const task = state.tasks.find(t => t.id === id)
-  const [modal, setModal] = useState<'' | 'apply' | 'cancel' | 'dispute' | 'evidence' | 'review' | 'story' | 'report' | 'confirm'>('')
+  const nav = useNavigate()
+  const [modal, setModal] = useState<'' | 'apply' | 'cancel' | 'dispute' | 'review' | 'story' | 'report' | 'confirm' | 'trust'>('')
+  const [comment, setComment] = useState('')
+  const [coverBroken, setCoverBroken] = useState(false)
 
+  const task = state.tasks.find(t => t.id === id)
   const publisher = state.users.find(u => u.id === task?.publisherId)
   const helper = state.users.find(u => u.id === task?.helperId)
   const dispute = state.disputes.find(d => d.taskId === id)
@@ -19,179 +23,239 @@ export default function TaskDetail() {
   if (!task || !me) return <Empty text="任务不存在" />
   const isPublisher = task.publisherId === me.id
   const isHelper = task.helperId === me.id
+  const participant = isPublisher || isHelper
   const myApplication = task.applicants.find(a => a.userId === me.id)
   const canApply = ['open', 'applied'].includes(task.status) && !isPublisher && !myApplication
   const active = ['matched', 'starting_soon', 'in_progress', 'pending_confirm'].includes(task.status)
   const myReview = task.reviews.find(r => r.fromId === me.id)
   const theirReview = task.reviews.find(r => r.toId === me.id)
+  const comments = task.comments ?? []
+  const saved = (state.savedTasks ?? []).includes(task.id)
+  const following = publisher ? state.following.includes(publisher.id) : false
+  const pendingApps = task.applicants.filter(a => a.status === 'pending')
 
   if (task.status === 'blocked' && !isPublisher) return <Empty icon="🚫" text="该任务未通过安全审核,已被阻止展示。" />
 
+  const tags = [
+    CATEGORY_META[task.category].label,
+    task.online ? '线上互助' : task.locationText.replace(/附近$/, ''),
+    ...(task.communityId ? [state.communities.find(c => c.id === task.communityId)?.name ?? ''] : []),
+  ].filter(Boolean)
+
+  const shareTask = () => {
+    navigator.clipboard?.writeText(location.href).catch(() => {})
+    toast('链接已复制')
+  }
+
   return (
-    <div className="max-w-4xl mx-auto grid lg:grid-cols-[1fr_320px] gap-5 items-start">
-      <div className="space-y-4">
-        {/* 被阻止提示(发布者可见) */}
-        {task.status === 'blocked' && (
-          <div className="card p-5 border-l-4 border-ink-700 fade-up">
-            <div className="font-semibold mb-1">🚫 该任务已被安全审核阻止</div>
-            <p className="text-sm text-ink-500">{task.blockReason}</p>
-            <p className="text-xs text-ink-300 mt-2">风险标记:{task.riskFlags.join('、')} · 修改积分或措辞无法绕过审核。如有异议可前往安全中心申诉。</p>
-          </div>
-        )}
+    <div className="max-w-xl mx-auto pb-24">
+      {/* 封面 */}
+      <div className="-mx-3 md:mx-0 relative">
+        <div className="relative w-full overflow-hidden md:rounded-2xl bg-cream-100" style={{ aspectRatio: '4/3' }}>
+          {!coverBroken
+            ? <img src={`https://picsum.photos/seed/utopia-${task.id}/800/600`} alt="" className="absolute inset-0 w-full h-full object-cover" onError={() => setCoverBroken(true)} />
+            : <div className="absolute inset-0 flex items-center justify-center text-7xl" style={{ background: `linear-gradient(160deg, oklch(0.97 0.02 ${(task.id.charCodeAt(1) * 47) % 360}), oklch(0.93 0.04 ${(task.id.charCodeAt(1) * 47 + 30) % 360}))` }}>{task.images[0] ?? '🤝'}</div>}
+        </div>
+        <button className="absolute left-3 top-3 w-8 h-8 rounded-full bg-black/30 text-white flex items-center justify-center cursor-pointer backdrop-blur" onClick={() => nav(-1)}>
+          <ArrowLeft size={17} strokeWidth={2} />
+        </button>
+        <div className="absolute right-3 top-3 flex gap-1.5">
+          <span className="chip bg-black/35 text-white backdrop-blur">1 / 1</span>
+        </div>
+        <div className="absolute left-3 bottom-3 flex gap-1.5">
+          <StatusBadge status={task.status} />
+          {task.riskFlags.map(f => <span key={f} className="chip bg-black/40 text-amber-100 backdrop-blur">⚠ {f}</span>)}
+        </div>
+      </div>
 
-        {/* 主卡 */}
-        <div className="card p-6 fade-up">
-          <div className="flex items-start justify-between gap-3 mb-3">
-            <h1 className="text-xl font-semibold leading-snug">{task.images.join(' ')} {task.title}</h1>
-            <Points value={task.points} size="lg" />
+      {/* 被阻止(发布者可见) */}
+      {task.status === 'blocked' && (
+        <div className="mt-4 bg-cream-100 rounded-2xl p-4">
+          <div className="font-semibold text-[15px] mb-1">🚫 该任务已被安全审核阻止</div>
+          <p className="text-sm text-ink-500">{task.blockReason}</p>
+          <p className="text-xs text-ink-300 mt-2">风险标记:{task.riskFlags.join('、')} · 修改积分或措辞无法绕过审核。如有异议可前往安全中心申诉。</p>
+        </div>
+      )}
+
+      {/* 发布者行 */}
+      <div className="flex items-center gap-2.5 py-3.5">
+        <Avatar user={publisher} size={38} />
+        <div className="flex-1 min-w-0">
+          <Link to={`/user/${publisher?.id}`} className="text-sm font-medium text-ink-900 flex items-center gap-1">
+            {publisher?.name} {publisher && <VerifyDot level={publisher.level} />}
+          </Link>
+          <button className="text-xs text-ink-300 cursor-pointer hover:text-ink-500" onClick={() => setModal('trust')}>
+            帮助过 {publisher?.stats.helped ?? 0} 次 · 查看信任护照
+          </button>
+        </div>
+        {!isPublisher && publisher && (
+          <button className={`btn !py-1.5 !px-4 !text-[13px] ${following ? 'bg-cream-100 text-ink-400' : 'border border-coral-500 text-coral-500 hover:bg-coral-50'}`}
+            onClick={() => { actions.toggleFollow(publisher.id); toast(following ? '已取消关注' : '已关注') }}>
+            {following ? '已关注' : '关注'}
+          </button>
+        )}
+      </div>
+
+      {/* 标题与正文 */}
+      <h1 className="text-[19px] font-semibold text-ink-900 leading-snug mb-2">{task.title}</h1>
+      <p className="text-[15px] text-ink-700 leading-[1.7] whitespace-pre-line">{task.description}</p>
+      <div className="flex flex-wrap gap-x-3 gap-y-1 mt-3 text-sm text-violet-500">
+        {tags.map(t => <span key={t}>#{t}</span>)}
+      </div>
+
+      {/* 结构化信息 */}
+      <div className="mt-4 bg-cream-100 rounded-xl px-4 py-3.5 space-y-2.5 text-sm text-ink-700">
+        <div className="flex items-center gap-2.5"><Calendar size={16} className="text-ink-400 shrink-0" strokeWidth={1.8} />{fmtDate(task.date, task.startTime)} · 约 {task.durationMin >= 60 ? `${task.durationMin / 60} 小时` : `${task.durationMin} 分钟`}</div>
+        <div className="flex items-center gap-2.5"><MapPin size={16} className="text-ink-400 shrink-0" strokeWidth={1.8} />{task.online ? '线上进行' : `${task.locationText}${task.distanceKm > 0 ? ` · 距离你 ${task.distanceKm} km` : ''} · ${task.publicPlace ? '公共场所' : '需要上门'}`}</div>
+        <div className="flex items-center gap-2.5"><Sparkles size={16} className="text-ink-400 shrink-0" strokeWidth={1.8} /><span className="text-coral-500 font-semibold">{task.points} pt</span><span className="text-ink-300 text-xs">另 {task.serviceFee} pt 服务积分,匹配后一并托管</span></div>
+        <div className="flex items-center gap-2.5"><Users size={16} className="text-ink-400 shrink-0" strokeWidth={1.8} />需要 {task.headcount} 人{task.skillsRequired.length > 0 && ` · ${task.skillsRequired.join('、')}`}</div>
+        <div className="flex items-center gap-2.5"><CircleCheck size={16} className="text-ink-400 shrink-0" strokeWidth={1.8} />{task.doneCriteria}</div>
+        {!task.online && <p className="text-[11px] text-ink-300 pt-1 border-t border-cream-300">仅显示大致位置,精确地点在匹配后按需告知 · {task.cancelPolicy}</p>}
+        {task.riskTier !== 'T0' && task.riskTier !== 'T1' && <div className="pt-0.5"><TierBadge tier={task.riskTier} /></div>}
+      </div>
+
+      {/* 申请者预览 / 发布者的申请管理 */}
+      {['open', 'applied'].includes(task.status) && !isPublisher && pendingApps.length > 0 && (
+        <div className="flex items-center gap-2 mt-4 text-sm text-ink-400">
+          <div className="flex -space-x-2">
+            {pendingApps.slice(0, 3).map(a => <Avatar key={a.id} user={state.users.find(u => u.id === a.userId)} size={24} link={false} />)}
           </div>
-          <div className="flex flex-wrap gap-1.5 mb-4">
-            <StatusBadge status={task.status} />
-            <CategoryChip cat={task.category} />
-            <TierBadge tier={task.riskTier} />
-            <span className="chip bg-cream-200 text-ink-500">{task.online ? '💻 线上' : task.publicPlace ? '🏞 公共场所' : '🏠 上门'}</span>
-            {task.riskFlags.map(f => <span key={f} className="chip bg-amber-100 text-amber-600">⚠ {f}</span>)}
-          </div>
-          <p className="text-[15px] text-ink-700 leading-relaxed whitespace-pre-line mb-5">{task.description}</p>
-          <div className="grid sm:grid-cols-2 gap-3 text-sm">
-            <Info label="🗓 时间" value={`${fmtDate(task.date, task.startTime)} · 约 ${task.durationMin >= 60 ? `${task.durationMin / 60} 小时` : `${task.durationMin} 分钟`}`} />
-            <Info label="📍 地点" value={`${task.locationText}${!task.online && task.distanceKm > 0 ? ` · 距你约 ${task.distanceKm} km` : ''}`} />
-            <Info label="✅ 完成标准" value={task.doneCriteria} />
-            <Info label="🎯 所需技能" value={task.skillsRequired.length ? task.skillsRequired.join('、') : '无特殊要求'} />
-            <Info label="👥 人数" value={`${task.headcount} 人`} />
-            <Info label="↩️ 取消规则" value={task.cancelPolicy} />
-          </div>
-          {!task.online && (
-            <p className="text-[11px] text-ink-300 mt-4 pt-3 border-t border-cream-200">
-              🔒 仅显示大致位置。精确地点在匹配后、且任务确实需要时才会告知帮助者。
-            </p>
+          已有 {pendingApps.length} 人申请
+        </div>
+      )}
+
+      {isPublisher && ['open', 'applied'].includes(task.status) && (
+        <div className="mt-5">
+          <h3 className="font-semibold text-[15px] mb-3">收到的申请({pendingApps.length})</h3>
+          {pendingApps.length === 0 && (
+            <p className="text-sm text-ink-400">还没有人申请。任务已对{{ all: '所有人', nearby: '附近用户', community: '仅所在社区', followers: '仅关注者', invited: '仅受邀者' }[task.visibility]}可见,匹配的成员会收到推荐。</p>
           )}
-        </div>
-
-        {/* 争议面板 */}
-        {dispute && (isPublisher || isHelper) && <DisputePanel taskId={task.id} />}
-
-        {/* 执行面板 */}
-        {active && (isPublisher || isHelper) && (
-          <ExecutionPanel task={task} isPublisher={isPublisher} onConfirm={() => setModal('confirm')} onDispute={() => setModal('dispute')} />
-        )}
-
-        {/* 申请列表(发布者) */}
-        {isPublisher && ['open', 'applied'].includes(task.status) && (
-          <div className="card p-5">
-            <h3 className="font-semibold mb-3">收到的申请({task.applicants.filter(a => a.status === 'pending').length})</h3>
-            {task.applicants.filter(a => a.status === 'pending').length === 0 && (
-              <p className="text-sm text-ink-400">还没有人申请。任务已对{{ all: '所有人', nearby: '附近用户', community: '所在社区', followers: '关注者', invited: '受邀者' }[task.visibility]}可见,匹配的成员会收到推荐。</p>
-            )}
-            <div className="space-y-4">
-              {task.applicants.filter(a => a.status === 'pending').map(a => {
-                const u = state.users.find(x => x.id === a.userId)!
-                return (
-                  <div key={a.id} className="border border-cream-200 rounded-xl p-4">
-                    <UserRow user={u} extra={
-                      <div className="text-right text-xs text-ink-400 shrink-0">
-                        <div>帮助过 {u.stats.helped} 次</div>
-                        <div>准时 {u.stats.onTimeRate}% · 取消 {u.stats.cancelRate}%</div>
-                      </div>
-                    } />
-                    <div className="mt-3 text-sm bg-cream-100 rounded-lg p-3 space-y-1">
-                      <div><span className="text-ink-400">介绍:</span>{a.intro}</div>
-                      <div><span className="text-ink-400">为什么适合:</span>{a.why}</div>
-                      <div><span className="text-ink-400">可用时间:</span>{a.availability}{a.hasEquipment && ' · 自带所需设备'}</div>
-                      {a.question && <div><span className="text-ink-400">提问:</span>{a.question}</div>}
+          <div className="space-y-3">
+            {pendingApps.map(a => {
+              const u = state.users.find(x => x.id === a.userId)!
+              return (
+                <div key={a.id} className="bg-cream-50 rounded-2xl p-4">
+                  <UserRow user={u} extra={
+                    <div className="text-right text-xs text-ink-400 shrink-0">
+                      <div>帮助过 {u.stats.helped} 次</div>
+                      <div>准时 {u.stats.onTimeRate}%</div>
                     </div>
-                    <div className="flex gap-2 mt-3">
-                      <Link to={`/user/${u.id}`} className="btn-outline !py-1.5 flex-1">查看主页</Link>
-                      <button className="btn-primary !py-1.5 flex-1" onClick={() => {
-                        const res = actions.selectHelper(task.id, u.id)
-                        if (!res.ok) alert(res.reason)
-                      }}>选择 TA(托管 {task.points + task.serviceFee} pt)</button>
-                    </div>
+                  } />
+                  <div className="mt-3 text-sm text-ink-700 space-y-1">
+                    <div>「{a.intro}」</div>
+                    <div className="text-ink-500 text-[13px]">{a.why} · {a.availability}{a.hasEquipment && ' · 自带设备'}</div>
+                    {a.question && <div className="text-ink-500 text-[13px]">提问:{a.question}</div>}
                   </div>
-                )
-              })}
-            </div>
-          </div>
-        )}
-
-        {/* 评价区 */}
-        {task.status === 'completed' && (isPublisher || isHelper) && (
-          <div className="card p-5">
-            <h3 className="font-semibold mb-3">双向评价</h3>
-            {!myReview
-              ? <button className="btn-primary" onClick={() => setModal('review')}>写下你的评价</button>
-              : !myReview.published
-                ? <p className="text-sm text-ink-400">✓ 你已完成评价。评价将在双方都提交后(或评价期结束时)同时公开,避免互相影响。</p>
-                : null}
-            {theirReview?.published && (
-              <div className="mt-3 bg-cream-100 rounded-xl p-4 text-sm space-y-1">
-                <div className="font-medium">{state.users.find(u => u.id === theirReview.fromId)?.name} 对你的评价:</div>
-                <div className="flex flex-wrap gap-1.5 my-2">
-                  <span className={`chip ${theirReview.onTime ? 'bg-leaf-50 text-leaf-600' : 'bg-coral-100 text-coral-600'}`}>{theirReview.onTime ? '✓ 准时' : '未准时'}</span>
-                  <span className={`chip ${theirReview.fulfilled ? 'bg-leaf-50 text-leaf-600' : 'bg-coral-100 text-coral-600'}`}>{theirReview.fulfilled ? '✓ 完成约定' : '未完成约定'}</span>
-                  <span className="chip bg-cream-200 text-ink-500">沟通 {theirReview.clearComm}/5</span>
-                  <span className="chip bg-cream-200 text-ink-500">尊重边界 {theirReview.respectBoundary}/5</span>
-                  <span className={`chip ${theirReview.wouldRepeat ? 'bg-violet-100 text-violet-600' : 'bg-cream-200 text-ink-400'}`}>{theirReview.wouldRepeat ? '💜 愿意再次合作' : '暂不考虑再合作'}</span>
+                  <div className="flex gap-2 mt-3">
+                    <Link to={`/user/${u.id}`} className="btn-outline !py-1.5 flex-1">查看主页</Link>
+                    <button className="btn-primary !py-1.5 flex-1" onClick={() => {
+                      const res = actions.selectHelper(task.id, u.id)
+                      if (!res.ok) toast(res.reason ?? '操作失败')
+                      else toast('已选择,积分已托管')
+                    }}>选择 TA(托管 {task.points + task.serviceFee} pt)</button>
+                  </div>
                 </div>
-                <p className="text-ink-500">{theirReview.note}</p>
-              </div>
-            )}
-            {myReview?.published && task.storyId === undefined && (
-              <button className="btn-secondary mt-4" onClick={() => setModal('story')}>✍️ 把这次互助发布为故事</button>
-            )}
-            {task.storyId && <Link to={`/post/${task.storyId}`} className="block text-sm text-coral-500 mt-3">→ 查看这次互助的故事</Link>}
+              )
+            })}
           </div>
-        )}
-      </div>
-
-      {/* 侧栏 */}
-      <div className="space-y-4">
-        <div className="card p-5">
-          <div className="flex items-center gap-3 mb-3">
-            <Avatar user={publisher} size={44} />
-            <div>
-              <Link to={`/user/${publisher?.id}`} className="font-medium text-sm">{publisher?.name}</Link>
-              <div className="mt-0.5"><LevelBadge level={publisher?.level ?? 0} short /></div>
-            </div>
-          </div>
-          <p className="text-xs text-ink-400 mb-3">{publisher?.bio}</p>
-          {publisher && <TrustPassport user={publisher} compact />}
         </div>
+      )}
 
-        {canApply && (
-          <button className="btn-primary w-full !py-3 !text-base" onClick={() => setModal('apply')}>🙋 申请提供帮助</button>
-        )}
-        {myApplication?.status === 'pending' && (
-          <div className="card p-4 text-sm text-ink-500">✓ 已申请,等待发布者选择。你的介绍:「{myApplication.intro}」</div>
-        )}
-        {task.chatId && (isPublisher || isHelper) && (
-          <Link to={`/messages/${task.chatId}`} className="btn-green w-full !py-3">💬 打开任务聊天</Link>
-        )}
-        {helper && (isPublisher || isHelper) && (
-          <div className="card p-4">
-            <div className="text-xs text-ink-400 mb-2">帮助者</div>
-            <UserRow user={helper} />
-          </div>
-        )}
-        {active && (isPublisher || isHelper) && (
-          <div>
-            <button className="btn-danger w-full" onClick={() => setModal('cancel')}>取消任务</button>
-            {task.status === 'pending_confirm' && (
-              <p className="text-[11px] text-amber-600 mt-1.5 text-center">⚠ 帮助者已提交完成,此时取消将按临近取消补偿处理</p>
-            )}
-          </div>
-        )}
-        {!isPublisher && (
-          <button className="btn-ghost w-full" onClick={() => setModal('report')}>🚩 举报该任务</button>
-        )}
-        {active && (
-          <div className="card p-4 text-xs text-ink-400 leading-relaxed">
-            🛡️ <span className="font-medium text-ink-500">安全提醒:</span>首次合作建议选择公共场所;可在安全中心把任务分享给可信联系人;任何要求垫付现金、购买礼品卡的行为都是诈骗。
-          </div>
-        )}
+      {/* 争议面板 */}
+      {dispute && participant && <DisputePanel taskId={task.id} />}
+
+      {/* 执行面板 */}
+      {active && participant && (
+        <ExecutionPanel task={task} isPublisher={isPublisher} onConfirm={() => setModal('confirm')} onDispute={() => setModal('dispute')} onCancel={() => setModal('cancel')} />
+      )}
+
+      {/* 帮助者信息(参与者可见) */}
+      {helper && participant && (
+        <div className="mt-4 bg-cream-50 rounded-2xl p-4">
+          <div className="text-xs text-ink-400 mb-2">帮助者</div>
+          <UserRow user={helper} />
+        </div>
+      )}
+
+      {/* 评价区 */}
+      {task.status === 'completed' && participant && (
+        <div className="mt-5">
+          <h3 className="font-semibold text-[15px] mb-3">双向评价</h3>
+          {!myReview
+            ? <button className="btn-primary" onClick={() => setModal('review')}>写下你的评价</button>
+            : !myReview.published
+              ? <p className="text-sm text-ink-400">✓ 你已完成评价。评价将在双方都提交后(或评价期结束时)同时公开,避免互相影响。</p>
+              : null}
+          {theirReview?.published && (
+            <div className="mt-3 bg-cream-50 rounded-2xl p-4 text-sm space-y-1">
+              <div className="font-medium">{state.users.find(u => u.id === theirReview.fromId)?.name} 对你的评价:</div>
+              <div className="flex flex-wrap gap-1.5 my-2">
+                <span className={`chip ${theirReview.onTime ? 'bg-leaf-50 text-leaf-600' : 'bg-coral-50 text-coral-600'}`}>{theirReview.onTime ? '✓ 准时' : '未准时'}</span>
+                <span className={`chip ${theirReview.fulfilled ? 'bg-leaf-50 text-leaf-600' : 'bg-coral-50 text-coral-600'}`}>{theirReview.fulfilled ? '✓ 完成约定' : '未完成约定'}</span>
+                <span className="chip bg-cream-100 text-ink-500">沟通 {theirReview.clearComm}/5</span>
+                <span className="chip bg-cream-100 text-ink-500">尊重边界 {theirReview.respectBoundary}/5</span>
+                <span className={`chip ${theirReview.wouldRepeat ? 'bg-violet-50 text-violet-600' : 'bg-cream-100 text-ink-400'}`}>{theirReview.wouldRepeat ? '💜 愿意再次合作' : '暂不考虑再合作'}</span>
+              </div>
+              <p className="text-ink-500">{theirReview.note}</p>
+            </div>
+          )}
+          {myReview?.published && task.storyId === undefined && (
+            <button className="btn-secondary mt-4" onClick={() => setModal('story')}>✍️ 把这次互助发布为故事</button>
+          )}
+          {task.storyId && <Link to={`/post/${task.storyId}`} className="block text-sm text-coral-500 mt-3">→ 查看这次互助的故事</Link>}
+        </div>
+      )}
+
+      {/* 评论问答 */}
+      <div className="mt-6 pt-4 border-t border-cream-200">
+        <div className="text-sm text-ink-400 mb-4">共 {comments.length} 条评论 · 敏感信息请申请后私聊,不要公开电话与精确地址</div>
+        <div className="space-y-4">
+          {comments.map(c => {
+            const u = state.users.find(x => x.id === c.userId)
+            return (
+              <div key={c.id} className="flex gap-2.5">
+                <Avatar user={u} size={32} />
+                <div className="min-w-0">
+                  <div className="text-xs text-ink-400">{u?.name}{c.userId === task.publisherId && <span className="chip bg-cream-100 text-ink-400 ml-1.5 !text-[10px]">发布者</span>}</div>
+                  <div className="text-sm text-ink-700 mt-0.5 leading-relaxed">{c.text}</div>
+                  <div className="text-[11px] text-ink-300 mt-1">{fmtTime(c.createdAt)}</div>
+                </div>
+              </div>
+            )
+          })}
+          {comments.length === 0 && <p className="text-sm text-ink-300 py-3">还没有评论,问问细节吧。</p>}
+        </div>
+        <button className="text-xs text-ink-300 mt-5 cursor-pointer hover:text-coral-500" onClick={() => setModal('report')}>🚩 举报该任务</button>
       </div>
 
-      {/* ===== 弹窗们 ===== */}
+      {/* 底部固定操作栏 */}
+      {task.status !== 'blocked' && (
+        <div className="fixed bottom-0 inset-x-0 md:left-56 z-40 bg-white border-t border-cream-200">
+          <div className="max-w-xl mx-auto flex items-center gap-3 px-4 py-2.5">
+            <div className="flex-1 flex items-center gap-2 bg-cream-100 rounded-full px-4 py-2">
+              <input className="flex-1 bg-transparent text-sm outline-none placeholder:text-ink-300" placeholder="想问点什么…"
+                value={comment} onChange={e => setComment(e.target.value)}
+                onKeyDown={e => { if (e.key === 'Enter' && comment.trim()) { actions.addTaskComment(task.id, comment.trim()); setComment(''); toast('已发布提问') } }} />
+              {comment.trim() && <button className="text-coral-500 text-sm font-medium cursor-pointer" onClick={() => { actions.addTaskComment(task.id, comment.trim()); setComment(''); toast('已发布提问') }}>发送</button>}
+            </div>
+            <button className="flex flex-col items-center text-ink-500 cursor-pointer" onClick={() => { const on = actions.toggleSaveTask(task.id); toast(on ? '已收藏' : '已取消收藏') }} aria-label="收藏">
+              <Star size={21} strokeWidth={1.8} className={saved ? 'fill-amber-500 text-amber-500' : ''} />
+            </button>
+            <button className="flex flex-col items-center text-ink-500 cursor-pointer" onClick={shareTask} aria-label="分享">
+              <Share2 size={20} strokeWidth={1.8} />
+            </button>
+            {canApply && <button className="btn-primary !px-5 !py-2.5 shrink-0 whitespace-nowrap" onClick={() => setModal('apply')}>申请提供帮助</button>}
+            {myApplication?.status === 'pending' && <button className="btn !px-5 !py-2.5 shrink-0 whitespace-nowrap bg-cream-100 text-ink-400" disabled>已申请</button>}
+            {participant && task.chatId && <button className="btn-primary !px-5 !py-2.5 shrink-0 whitespace-nowrap" onClick={() => nav(`/messages/${task.chatId}`)}><MessageCircle size={16} strokeWidth={2} /> 任务聊天</button>}
+            {!participant && !canApply && !myApplication && ['matched', 'starting_soon', 'in_progress', 'pending_confirm'].includes(task.status) && (
+              <button className="btn !px-5 !py-2.5 bg-cream-100 text-ink-400" disabled>已匹配</button>
+            )}
+            {task.status === 'completed' && participant && !myReview && <button className="btn-primary !px-5 !py-2.5" onClick={() => setModal('review')}>写评价</button>}
+          </div>
+        </div>
+      )}
+
+      {/* ===== 弹窗 ===== */}
       <ApplyModal open={modal === 'apply'} onClose={() => setModal('')} task={task} />
       <CancelModal open={modal === 'cancel'} onClose={() => setModal('')} task={task} />
       <ConfirmModal open={modal === 'confirm'} onClose={() => setModal('')} task={task} onDispute={() => setModal('dispute')} />
@@ -199,21 +263,16 @@ export default function TaskDetail() {
       <ReviewModal open={modal === 'review'} onClose={() => setModal('')} task={task} />
       <StoryModal open={modal === 'story'} onClose={() => setModal('')} task={task} />
       <ReportModal open={modal === 'report'} onClose={() => setModal('')} targetType="task" targetId={task.id} />
-    </div>
-  )
-}
-
-function Info({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="bg-cream-100 rounded-xl p-3">
-      <div className="text-[11px] text-ink-400 mb-0.5">{label}</div>
-      <div className="text-sm text-ink-700">{value}</div>
+      <Modal open={modal === 'trust'} onClose={() => setModal('')} title={`${publisher?.name} 的信任护照`}>
+        {publisher && <TrustPassport user={publisher} compact />}
+        <p className="text-[11px] text-ink-300 mt-4">为保护隐私,身份证件、精确地址、积分余额与位置历史不会向其他用户公开。</p>
+      </Modal>
     </div>
   )
 }
 
 // ============ 执行面板 ============
-function ExecutionPanel({ task, isPublisher, onConfirm, onDispute }: { task: Task; isPublisher: boolean; onConfirm: () => void; onDispute: () => void }) {
+function ExecutionPanel({ task, isPublisher, onConfirm, onDispute, onCancel }: { task: Task; isPublisher: boolean; onConfirm: () => void; onDispute: () => void; onCancel: () => void }) {
   const { actions } = useStore()
   const [elapsed, setElapsed] = useState(0)
   useEffect(() => {
@@ -227,22 +286,23 @@ function ExecutionPanel({ task, isPublisher, onConfirm, onDispute }: { task: Tas
   const code = useMemo(() => String(((task.id.charCodeAt(1) || 7) * 1237) % 9000 + 1000), [task.id])
 
   return (
-    <div className="card p-5 border-l-4 border-coral-400">
+    <div className="mt-5 bg-cream-50 rounded-2xl p-4">
       <div className="flex items-center justify-between mb-3">
-        <h3 className="font-semibold">任务执行</h3>
+        <h3 className="font-semibold text-[15px]">任务执行</h3>
         <StatusBadge status={task.status} />
       </div>
 
       {(task.status === 'matched' || task.status === 'starting_soon') && (
         <div>
           <p className="text-sm text-ink-500 mb-3">积分已托管锁定({task.points} pt + {task.serviceFee} pt 服务积分)。到达约定时间后,双方确认开始。</p>
-          <div className="flex items-center gap-3 mb-4 bg-cream-100 rounded-xl p-3">
+          <div className="flex items-center gap-3 mb-4 bg-white rounded-xl p-3">
             <div className="text-2xl font-mono font-bold tracking-widest text-ink-700">{code}</div>
             <div className="text-xs text-ink-400">一次性开始验证码 · 线下见面时互相核对,或双方各自点击开始</div>
           </div>
           <div className="flex gap-2 flex-wrap">
-            <button className="btn-primary" onClick={() => actions.startTask(task.id)}>▶ 确认开始任务</button>
+            <button className="btn-primary" onClick={() => actions.startTask(task.id)}>确认开始任务</button>
             <Link to="/safety" className="btn-outline">分享给可信联系人</Link>
+            <button className="btn-ghost" onClick={onCancel}>取消任务</button>
           </div>
         </div>
       )}
@@ -256,8 +316,9 @@ function ExecutionPanel({ task, isPublisher, onConfirm, onDispute }: { task: Tas
           <div className="flex gap-2 flex-wrap">
             {!isPublisher && <button className="btn-green" onClick={() => actions.submitComplete(task.id)}>✓ 提交完成</button>}
             {isPublisher && <button className="btn-outline" onClick={() => actions.submitComplete(task.id)}>标记为待确认</button>}
-            <button className="btn-outline">🟢 我很安全(定时确认)</button>
-            <Link to="/safety" className="btn-outline">⚠ 请求平台帮助</Link>
+            <button className="btn-outline" onClick={() => toast('已向可信联系人报平安')}>我很安全</button>
+            <Link to="/safety" className="btn-outline">请求平台帮助</Link>
+            <button className="btn-ghost" onClick={onCancel}>取消任务</button>
           </div>
           <p className="text-[11px] text-ink-300 mt-3">遇到紧急情况请直接拨打当地紧急服务电话(如 110 / 120)。平台客服不是紧急救援机构。</p>
         </div>
@@ -271,20 +332,28 @@ function ExecutionPanel({ task, isPublisher, onConfirm, onDispute }: { task: Tas
               <div className="flex gap-2 flex-wrap">
                 <button className="btn-green" onClick={onConfirm}>确认结果</button>
                 <button className="btn-danger" onClick={onDispute}>发起争议</button>
+                <button className="btn-ghost" onClick={onCancel}>取消任务</button>
               </div>
+              <p className="text-[11px] text-amber-600 mt-2">⚠ 帮助者已提交完成,此时取消将按临近取消补偿处理</p>
             </div>
           ) : (
-            <p className="text-sm text-ink-500">✓ 你已提交完成,等待发布者确认。确认后 {task.points} pt 将进入你的账户。</p>
+            <div>
+              <p className="text-sm text-ink-500">✓ 你已提交完成,等待发布者确认。确认后 {task.points} pt 将进入你的账户。</p>
+              <button className="btn-ghost mt-2" onClick={onCancel}>取消任务</button>
+            </div>
           )}
         </div>
       )}
+      <p className="text-[11px] text-ink-300 mt-3 pt-3 border-t border-cream-200">
+        安全提醒:首次合作建议选择公共场所;任何要求垫付现金、购买礼品卡的行为都是诈骗。
+      </p>
     </div>
   )
 }
 
 // ============ 申请弹窗 ============
 function ApplyModal({ open, onClose, task }: { open: boolean; onClose: () => void; task: Task }) {
-  const { state, actions } = useStore()
+  const { actions } = useStore()
   const me = useCurrentUser()!
   const [intro, setIntro] = useState('')
   const [why, setWhy] = useState('')
@@ -294,7 +363,6 @@ function ApplyModal({ open, onClose, task }: { open: boolean; onClose: () => voi
 
   const levelNeed = task.riskTier === 'T2' ? 2 : task.riskTier === 'T1' ? 1 : 0
   const levelOk = me.level >= levelNeed
-  void state
 
   return (
     <Modal open={open} onClose={onClose} title="申请提供帮助">
@@ -328,7 +396,7 @@ function ApplyModal({ open, onClose, task }: { open: boolean; onClose: () => voi
           </div>
           <button className="btn-primary w-full !py-3" disabled={!intro.trim() || !why.trim()} onClick={() => {
             actions.applyToTask(task.id, { userId: me.id, intro: intro.trim(), why: why.trim(), availability: avail, hasEquipment: equip, question: question.trim() || undefined })
-            onClose()
+            onClose(); toast('申请已提交')
           }}>提交申请</button>
           <p className="text-[11px] text-ink-300 text-center">发布者会看到你的信任护照摘要(不含隐私信息)</p>
         </div>
@@ -391,10 +459,10 @@ function ConfirmModal({ open, onClose, task, onDispute }: { open: boolean; onClo
     <Modal open={open} onClose={onClose} title="确认任务结果">
       <p className="text-sm text-ink-500 mb-4">完成标准:{task.doneCriteria}</p>
       <div className="space-y-2">
-        <button className="w-full btn-green !py-3" onClick={() => { actions.confirmComplete(task.id, 'done'); onClose() }}>
+        <button className="w-full btn-green !py-3" onClick={() => { actions.confirmComplete(task.id, 'done'); onClose(); toast('已确认完成,积分已释放') }}>
           ✓ 确认完成 — 释放 {task.points} pt 给帮助者
         </button>
-        <button className="w-full btn-outline !py-3" onClick={() => { actions.confirmComplete(task.id, 'partial'); onClose() }}>
+        <button className="w-full btn-outline !py-3" onClick={() => { actions.confirmComplete(task.id, 'partial'); onClose(); toast('已按部分完成结算') }}>
           ◐ 部分完成 — 释放 {Math.floor(task.points / 2)} pt,其余退回
         </button>
         <button className="w-full btn-danger !py-3" onClick={() => { onClose(); onDispute() }}>
@@ -451,21 +519,21 @@ function DisputePanel({ taskId }: { taskId: string }) {
   const myClaim = isPublisher ? d.claimA : d.claimB
 
   return (
-    <div className="card p-5 border-l-4 border-amber-500">
+    <div className="mt-5 bg-amber-50 rounded-2xl p-4">
       <div className="flex items-center justify-between mb-3">
-        <h3 className="font-semibold">⚖️ 争议处理</h3>
-        <span className="chip bg-amber-100 text-amber-600">{{ open: '等待双方陈述', reviewing: '人工审核中', resolved: '已裁决', appealed: '申诉中', closed: '已结案' }[d.status]}</span>
+        <h3 className="font-semibold text-[15px]">⚖️ 争议处理</h3>
+        <span className="chip bg-white text-amber-600">{{ open: '等待双方陈述', reviewing: '人工审核中', resolved: '已裁决', appealed: '申诉中', closed: '已结案' }[d.status]}</span>
       </div>
       <div className="text-sm text-ink-500 space-y-2">
         <div><span className="text-ink-400">原因:</span>{d.reason} · 托管积分已冻结</div>
-        {d.claimA && <div className="bg-cream-100 rounded-lg p-3"><b>发布者陈述:</b>{d.claimA}</div>}
-        {d.claimB && <div className="bg-cream-100 rounded-lg p-3"><b>帮助者陈述:</b>{d.claimB}</div>}
+        {d.claimA && <div className="bg-white rounded-lg p-3"><b>发布者陈述:</b>{d.claimA}</div>}
+        {d.claimB && <div className="bg-white rounded-lg p-3"><b>帮助者陈述:</b>{d.claimB}</div>}
         {d.aiSummary && <div className="bg-violet-50 rounded-lg p-3 text-xs"><b>🤖 AI 中立摘要(仅供人工参考):</b>{d.aiSummary}</div>}
         {d.evidence.length > 0 && (
           <div>
             <div className="text-xs text-ink-400 mb-1">已提交证据:</div>
             {d.evidence.map((e, i) => (
-              <div key={i} className="text-xs bg-cream-100 rounded-lg p-2 mb-1">
+              <div key={i} className="text-xs bg-white rounded-lg p-2 mb-1">
                 {{ chat: '💬 聊天记录', photo: '📷 照片', other: '📄 其他' }[e.kind]} · {state.users.find(u => u.id === e.by)?.name}:{e.text}
               </div>
             ))}
@@ -477,15 +545,15 @@ function DisputePanel({ taskId }: { taskId: string }) {
         <div className="mt-4 space-y-2">
           {!myClaim && (
             <div className="flex gap-2">
-              <input className="input" placeholder="补充你的陈述" value={statement} onChange={e => setStatement(e.target.value)} />
+              <input className="input !bg-white" placeholder="补充你的陈述" value={statement} onChange={e => setStatement(e.target.value)} />
               <button className="btn-outline shrink-0" disabled={!statement.trim()} onClick={() => { actions.addDisputeStatement(d.id, me.id, statement.trim()); setStatement('') }}>提交陈述</button>
             </div>
           )}
           <div className="flex gap-2">
-            <input className="input" placeholder="提交证据(描述聊天记录/照片内容)" value={evidence} onChange={e => setEvidence(e.target.value)} />
+            <input className="input !bg-white" placeholder="提交证据(描述聊天记录/照片内容)" value={evidence} onChange={e => setEvidence(e.target.value)} />
             <button className="btn-outline shrink-0" disabled={!evidence.trim()} onClick={() => { actions.addEvidence(d.id, me.id, evidence.trim(), 'other'); setEvidence('') }}>提交证据</button>
           </div>
-          <p className="text-[11px] text-ink-300">证据提交后进入人工审核。管理员将在后台作出积分处理决定。</p>
+          <p className="text-[11px] text-ink-400">证据提交后进入人工审核。管理员将在后台作出积分处理决定。</p>
         </div>
       )}
 
@@ -498,7 +566,7 @@ function DisputePanel({ taskId }: { taskId: string }) {
           </div>
           {!d.appeal && (
             <div className="flex gap-2 mt-3">
-              <input className="input" placeholder="如不认同,可提交一次申诉" value={appeal} onChange={e => setAppeal(e.target.value)} />
+              <input className="input !bg-white" placeholder="如不认同,可提交一次申诉" value={appeal} onChange={e => setAppeal(e.target.value)} />
               <button className="btn-outline shrink-0" disabled={!appeal.trim()} onClick={() => { actions.appealDispute(d.id, me.id, appeal.trim()); setAppeal('') }}>申诉</button>
             </div>
           )}
@@ -506,7 +574,7 @@ function DisputePanel({ taskId }: { taskId: string }) {
       )}
       {d.status === 'appealed' && <p className="text-sm text-amber-600 mt-3">申诉已提交,等待复核。</p>}
       {d.status === 'closed' && d.appeal?.result && (
-        <div className="bg-cream-100 rounded-xl p-3 text-sm mt-3"><b>申诉结果:</b>{d.appeal.result}</div>
+        <div className="bg-white rounded-xl p-3 text-sm mt-3"><b>申诉结果:</b>{d.appeal.result}</div>
       )}
     </div>
   )
@@ -530,7 +598,7 @@ function ReviewModal({ open, onClose, task }: { open: boolean; onClose: () => vo
         <RateRow label="是否尊重边界" value={r.respectBoundary} onChange={v => setR({ ...r, respectBoundary: v })} />
         <ToggleRow label="愿意再次合作" value={r.wouldRepeat} onChange={v => setR({ ...r, wouldRepeat: v })} />
         <textarea className="input" rows={3} placeholder="补充说明(会公开给对方)" value={r.note} onChange={e => setR({ ...r, note: e.target.value })} />
-        <button className="btn-primary w-full" onClick={() => { actions.submitReview(task.id, r); onClose() }}>提交评价</button>
+        <button className="btn-primary w-full" onClick={() => { actions.submitReview(task.id, r); onClose(); toast('评价已提交') }}>提交评价</button>
       </div>
     </Modal>
   )
@@ -541,8 +609,8 @@ function ToggleRow({ label, value, onChange }: { label: string; value: boolean; 
     <div className="flex items-center justify-between">
       <span className="text-sm">{label}</span>
       <div className="flex gap-1">
-        <button className={`chip cursor-pointer ${value ? 'bg-leaf-500 text-white' : 'bg-cream-200 text-ink-400'}`} onClick={() => onChange(true)}>是</button>
-        <button className={`chip cursor-pointer ${!value ? 'bg-coral-500 text-white' : 'bg-cream-200 text-ink-400'}`} onClick={() => onChange(false)}>否</button>
+        <button className={`chip cursor-pointer ${value ? 'bg-leaf-500 text-white' : 'bg-cream-100 text-ink-400'}`} onClick={() => onChange(true)}>是</button>
+        <button className={`chip cursor-pointer ${!value ? 'bg-coral-500 text-white' : 'bg-cream-100 text-ink-400'}`} onClick={() => onChange(false)}>否</button>
       </div>
     </div>
   )
@@ -553,7 +621,7 @@ function RateRow({ label, value, onChange }: { label: string; value: number; onC
       <span className="text-sm">{label}</span>
       <div className="flex gap-0.5">
         {[1, 2, 3, 4, 5].map(i => (
-          <button key={i} className="text-lg cursor-pointer" onClick={() => onChange(i)}>{i <= value ? '★' : '☆'}</button>
+          <button key={i} className={`text-lg cursor-pointer ${i <= value ? 'text-amber-500' : 'text-cream-300'}`} onClick={() => onChange(i)}>★</button>
         ))}
       </div>
     </div>
@@ -583,7 +651,7 @@ function StoryModal({ open, onClose, task }: { open: boolean; onClose: () => voi
         </label>
         <button className="btn-primary w-full" disabled={!body.trim() || !agree} onClick={() => {
           actions.publishStory(task.id, { title, body: body.trim(), hideName, coverEmoji: task.images[0] || '🤝' })
-          onClose(); nav('/')
+          onClose(); toast('故事已发布'); nav('/')
         }}>发布到发现页</button>
       </div>
     </Modal>
@@ -602,7 +670,7 @@ export function ReportModal({ open, onClose, targetType, targetId }: { open: boo
           {['疑似诈骗', '骚扰或威胁', '涉及违禁内容', '虚假信息', '泄露他人隐私', '其他安全问题'].map(r => <option key={r}>{r}</option>)}
         </select>
         <textarea className="input" rows={3} placeholder="补充细节,帮助安全团队更快核实" value={detail} onChange={e => setDetail(e.target.value)} />
-        <button className="btn-danger w-full" onClick={() => { actions.report(targetType, targetId, reason, detail); onClose() }}>提交举报</button>
+        <button className="btn-danger w-full" onClick={() => { actions.report(targetType, targetId, reason, detail); onClose(); toast('举报已提交') }}>提交举报</button>
         <p className="text-[11px] text-ink-300 text-center">经核实的高质量安全举报会获得积分感谢</p>
       </div>
     </Modal>

@@ -1,103 +1,186 @@
 import { useState } from 'react'
-import { Link, NavLink, Outlet, useNavigate } from 'react-router-dom'
-import { useStore, useCurrentUser, availablePoints } from '../lib/store'
-import { Avatar, Logo, fmtTime } from './ui'
+import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
+import { Compass, MapPin, MessageCircle, Plus, User as UserIcon, UsersRound, Search, MoreHorizontal, House } from 'lucide-react'
+import { useStore, useCurrentUser } from '../lib/store'
+import { Avatar, Logo, ToastHost, toast } from './ui'
 
-const navCls = ({ isActive }: { isActive: boolean }) =>
-  `px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${isActive ? 'text-coral-600 bg-coral-50' : 'text-ink-500 hover:text-ink-700 hover:bg-cream-200'}`
+const sideCls = ({ isActive }: { isActive: boolean }) =>
+  `flex items-center gap-3 px-4 py-2.5 rounded-xl text-[15px] transition-colors ${isActive ? 'bg-cream-100 text-ink-900 font-semibold' : 'text-ink-500 hover:bg-cream-50 hover:text-ink-700'}`
 
 export default function Layout() {
   const { state, actions } = useStore()
   const me = useCurrentUser()
   const nav = useNavigate()
-  const [showNotif, setShowNotif] = useState(false)
-  const [showMe, setShowMe] = useState(false)
-  const myNotifs = state.notifications.filter(n => n.userId === state.currentUserId)
-  const unread = myNotifs.filter(n => !n.read).length
-  const balance = me ? availablePoints(state, me.id) : 0
+  const loc = useLocation()
+  const [sheet, setSheet] = useState(false)
+  const [more, setMore] = useState(false)
+  const unread = state.notifications.filter(n => n.userId === state.currentUserId && !n.read).length
+
+  // 详情页有自己的底部操作栏,隐藏全局底部导航
+  const hideBottomNav = /^\/task\//.test(loc.pathname) || /^\/messages\/./.test(loc.pathname)
 
   return (
-    <div className="min-h-screen pb-20 md:pb-10">
-      {/* 顶部导航(桌面) */}
-      <header className="sticky top-0 z-40 bg-cream-50/90 backdrop-blur shadow-nav">
-        <div className="max-w-6xl mx-auto px-4 h-14 flex items-center gap-2">
-          <Link to="/" className="shrink-0"><Logo /></Link>
-          <nav className="hidden md:flex items-center gap-1 ml-4">
-            <NavLink to="/" end className={navCls}>发现</NavLink>
-            <NavLink to="/nearby" className={navCls}>附近互助</NavLink>
-            <NavLink to="/circles" className={navCls}>圈子</NavLink>
-            <NavLink to="/messages" className={navCls}>消息</NavLink>
-            <NavLink to="/mytasks" className={navCls}>我的任务</NavLink>
-          </nav>
-          <div className="flex-1" />
-          <Link to="/publish" className="btn-primary !rounded-full max-sm:!hidden">＋ 发布帮助</Link>
-          <Link to="/points" className="chip bg-amber-100 text-amber-600 !py-1.5 hover:bg-amber-100/70 whitespace-nowrap" title="积分中心">✦ {balance} pt</Link>
-          {/* 通知 */}
-          <div className="relative">
-            <button onClick={() => { setShowNotif(v => !v); setShowMe(false) }} className="w-9 h-9 rounded-full hover:bg-cream-200 relative cursor-pointer">
-              🔔
-              {unread > 0 && <span className="absolute top-0.5 right-0.5 min-w-4 h-4 px-0.5 rounded-full bg-coral-500 text-white text-[10px] flex items-center justify-center">{unread}</span>}
-            </button>
-            {showNotif && (
-              <div className="absolute right-0 top-11 w-80 card p-2 z-50 max-h-96 overflow-y-auto">
-                <div className="flex items-center justify-between px-3 py-2">
-                  <span className="text-sm font-semibold">通知</span>
-                  <button className="text-xs text-coral-500 cursor-pointer" onClick={() => actions.markAllRead()}>全部已读</button>
-                </div>
-                {myNotifs.length === 0 && <div className="p-4 text-xs text-ink-300 text-center">暂无通知</div>}
-                {myNotifs.slice(0, 12).map(n => (
-                  <div key={n.id} className={`px-3 py-2.5 rounded-xl cursor-pointer hover:bg-cream-100 ${n.read ? 'opacity-60' : ''}`}
-                    onClick={() => { setShowNotif(false); if (n.link) nav(n.link) }}>
-                    <div className="text-sm">{n.icon} <span className="font-medium">{n.title}</span></div>
-                    <div className="text-xs text-ink-400 mt-0.5 line-clamp-2">{n.body}</div>
-                    <div className="text-[10px] text-ink-300 mt-0.5">{fmtTime(n.createdAt)}</div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-          {/* 头像菜单 */}
-          <div className="relative">
-            <button onClick={() => { setShowMe(v => !v); setShowNotif(false) }} className="cursor-pointer"><Avatar user={me} size={34} link={false} /></button>
-            {showMe && me && (
-              <div className="absolute right-0 top-11 w-56 card p-2 z-50" onClick={() => setShowMe(false)}>
-                <Link to={`/user/${me.id}`} className="block px-3 py-2 rounded-lg hover:bg-cream-100 text-sm">👤 个人主页</Link>
-                <Link to="/trust" className="block px-3 py-2 rounded-lg hover:bg-cream-100 text-sm">🛂 信任与认证</Link>
-                <Link to="/safety" className="block px-3 py-2 rounded-lg hover:bg-cream-100 text-sm">🛡️ 安全中心</Link>
-                <Link to="/points" className="block px-3 py-2 rounded-lg hover:bg-cream-100 text-sm">✦ 积分中心</Link>
-                <Link to="/admin" className="block px-3 py-2 rounded-lg hover:bg-cream-100 text-sm">⚙️ 管理员后台</Link>
-                <div className="border-t border-cream-200 my-1" />
-                <button className="block w-full text-left px-3 py-2 rounded-lg hover:bg-cream-100 text-sm text-ink-400 cursor-pointer" onClick={() => { actions.logout(); nav('/welcome') }}>退出登录</button>
-              </div>
-            )}
-          </div>
+    <div className="min-h-screen bg-white">
+      {/* 桌面左侧导航 */}
+      <aside className="hidden md:flex fixed inset-y-0 left-0 w-56 flex-col px-3 py-5 border-r border-cream-200 bg-white z-40">
+        <Link to="/" className="px-4 mb-6"><Logo size={30} /></Link>
+        <nav className="space-y-1 flex-1">
+          <NavLink to="/" end className={sideCls}><Compass size={20} strokeWidth={1.8} /> 发现</NavLink>
+          <NavLink to="/nearby" className={sideCls}><MapPin size={20} strokeWidth={1.8} /> 附近</NavLink>
+          <NavLink to="/circles" className={sideCls}><UsersRound size={20} strokeWidth={1.8} /> 圈子</NavLink>
+          <NavLink to="/messages" className={sideCls}>
+            <span className="relative"><MessageCircle size={20} strokeWidth={1.8} />
+              {unread > 0 && <span className="absolute -top-1 -right-1.5 min-w-3.5 h-3.5 px-0.5 rounded-full bg-coral-500 text-white text-[9px] flex items-center justify-center">{unread}</span>}
+            </span> 消息
+          </NavLink>
+          <NavLink to={me ? `/user/${me.id}` : '/welcome'} className={sideCls}><UserIcon size={20} strokeWidth={1.8} /> 我的</NavLink>
+          <button className="w-full mt-4 btn-primary !py-2.5 !text-[15px]" onClick={() => setSheet(true)}>
+            <Plus size={18} strokeWidth={2.2} /> 发布
+          </button>
+        </nav>
+        <div className="relative">
+          <button className="flex items-center gap-3 px-4 py-2.5 rounded-xl text-ink-500 hover:bg-cream-50 w-full cursor-pointer" onClick={() => setMore(v => !v)}>
+            <MoreHorizontal size={20} strokeWidth={1.8} /> 更多
+          </button>
+          {more && (
+            <div className="absolute bottom-12 left-2 w-52 pop border border-cream-200 p-1.5 z-50" onClick={() => setMore(false)}>
+              <Link to="/mytasks" className="block px-3 py-2 rounded-lg hover:bg-cream-50 text-sm">我的任务</Link>
+              <Link to="/points" className="block px-3 py-2 rounded-lg hover:bg-cream-50 text-sm">积分中心</Link>
+              <Link to="/trust" className="block px-3 py-2 rounded-lg hover:bg-cream-50 text-sm">信任与认证</Link>
+              <Link to="/safety" className="block px-3 py-2 rounded-lg hover:bg-cream-50 text-sm">安全中心</Link>
+              <Link to="/admin" className="block px-3 py-2 rounded-lg hover:bg-cream-50 text-sm">管理员后台</Link>
+              <div className="border-t border-cream-200 my-1" />
+              <button className="block w-full text-left px-3 py-2 rounded-lg hover:bg-cream-50 text-sm text-ink-400 cursor-pointer"
+                onClick={() => { actions.logout(); nav('/welcome') }}>退出登录</button>
+            </div>
+          )}
         </div>
-      </header>
+        {me && (
+          <Link to={`/user/${me.id}`} className="flex items-center gap-2.5 px-4 py-2 mt-1">
+            <Avatar user={me} size={30} link={false} />
+            <span className="text-sm text-ink-700 truncate">{me.name}</span>
+          </Link>
+        )}
+      </aside>
 
-      <main className="max-w-6xl mx-auto px-4 py-6">
-        <Outlet />
+      {/* 桌面顶部搜索(仅内容页) */}
+      <div className="hidden md:block fixed top-0 left-56 right-0 h-14 bg-white/95 backdrop-blur z-30 border-b border-cream-100">
+        <div className="max-w-[1200px] mx-auto h-full flex items-center px-6">
+          <button className="flex items-center gap-2 w-80 bg-cream-100 rounded-full px-4 py-2 text-sm text-ink-300 cursor-pointer hover:bg-cream-200 transition"
+            onClick={() => nav('/search')}>
+            <Search size={16} strokeWidth={1.8} /> 搜索任务、用户或社区
+          </button>
+        </div>
+      </div>
+
+      <main className={`md:pl-56 ${hideBottomNav ? 'pb-24' : 'pb-20'} md:pb-10 md:pt-14`}>
+        <div className="max-w-[1200px] mx-auto px-3 md:px-6 pt-2 md:pt-5">
+          <Outlet />
+        </div>
       </main>
 
-      {/* 底部导航(移动) */}
-      <nav className="fixed bottom-0 inset-x-0 z-40 bg-white border-t border-cream-200 md:hidden">
-        <div className="grid grid-cols-5 h-16">
-          {[
-            { to: '/', label: '首页', icon: '🏠' },
-            { to: '/nearby', label: '附近', icon: '📍' },
-            { to: '/publish', label: '发布', icon: '＋', special: true },
-            { to: '/messages', label: '消息', icon: '💬' },
-            { to: '/mytasks', label: '我的', icon: '👤' },
-          ].map(item => (
-            <NavLink key={item.to} to={item.to} end={item.to === '/'} className={({ isActive }) =>
-              `flex flex-col items-center justify-center gap-0.5 text-[10px] ${isActive ? 'text-coral-600' : 'text-ink-400'}`}>
-              {item.special
-                ? <span className="w-10 h-10 -mt-4 rounded-full bg-coral-500 text-white text-xl flex items-center justify-center shadow-card">＋</span>
-                : <span className="text-lg">{item.icon}</span>}
-              {item.label}
+      {/* 移动底部导航 */}
+      {!hideBottomNav && (
+        <nav className="fixed bottom-0 inset-x-0 z-40 bg-white border-t border-cream-200 md:hidden">
+          <div className="grid grid-cols-5 h-14 items-center">
+            <NavLink to="/" end className={({ isActive }) => `flex flex-col items-center gap-0.5 text-[10px] ${isActive ? 'text-ink-900 font-semibold' : 'text-ink-400'}`}>
+              <House size={21} strokeWidth={1.8} /> 首页
             </NavLink>
-          ))}
-        </div>
-      </nav>
+            <NavLink to="/nearby" className={({ isActive }) => `flex flex-col items-center gap-0.5 text-[10px] ${isActive ? 'text-ink-900 font-semibold' : 'text-ink-400'}`}>
+              <MapPin size={21} strokeWidth={1.8} /> 附近
+            </NavLink>
+            <button className="flex items-center justify-center cursor-pointer" onClick={() => setSheet(true)} aria-label="发布">
+              <span className="w-11 h-8 rounded-[10px] bg-coral-500 text-white flex items-center justify-center shadow-card">
+                <Plus size={20} strokeWidth={2.4} />
+              </span>
+            </button>
+            <NavLink to="/messages" className={({ isActive }) => `relative flex flex-col items-center gap-0.5 text-[10px] ${isActive ? 'text-ink-900 font-semibold' : 'text-ink-400'}`}>
+              <span className="relative"><MessageCircle size={21} strokeWidth={1.8} />
+                {unread > 0 && <span className="absolute -top-1 -right-1.5 min-w-3.5 h-3.5 px-0.5 rounded-full bg-coral-500 text-white text-[9px] flex items-center justify-center">{unread}</span>}
+              </span> 消息
+            </NavLink>
+            <NavLink to={me ? `/user/${me.id}` : '/welcome'} className={({ isActive }) => `flex flex-col items-center gap-0.5 text-[10px] ${isActive ? 'text-ink-900 font-semibold' : 'text-ink-400'}`}>
+              <UserIcon size={21} strokeWidth={1.8} /> 我
+            </NavLink>
+          </div>
+        </nav>
+      )}
+
+      <PublishSheet open={sheet} onClose={() => setSheet(false)} />
+      <ToastHost />
+    </div>
+  )
+}
+
+// ============ 发布底部面板 ============
+function PublishSheet({ open, onClose }: { open: boolean; onClose: () => void }) {
+  const nav = useNavigate()
+  const { state, actions } = useStore()
+  const [mode, setMode] = useState<'' | 'offer' | 'story' | 'event'>('')
+  const [text, setText] = useState('')
+  const [title, setTitle] = useState('')
+  const [communityId, setCommunityId] = useState('')
+
+  if (!open) return null
+  const close = () => { setMode(''); setText(''); setTitle(''); onClose() }
+
+  const OPTIONS = [
+    { icon: '🙋', title: '发布求助', desc: '把需要的帮助告诉附近的人', act: () => { close(); nav('/publish') } },
+    { icon: '🤲', title: '发布我能帮什么', desc: '长期开放的技能与时间', act: () => setMode('offer') },
+    { icon: '✍️', title: '分享互助故事', desc: '记录一次温暖的经历', act: () => setMode('story') },
+    { icon: '📅', title: '发起社区活动', desc: '召集圈子里的邻居', act: () => setMode('event') },
+  ]
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40" onClick={close}>
+      <div className="bg-white rounded-t-2xl w-full sm:max-w-md pb-8 sheet-up" onClick={e => e.stopPropagation()}>
+        <div className="w-9 h-1 rounded-full bg-cream-300 mx-auto mt-3 mb-4" />
+        {mode === '' && (
+          <div className="px-5 space-y-1">
+            {OPTIONS.map(o => (
+              <button key={o.title} className="w-full flex items-center gap-3.5 px-3 py-3.5 rounded-xl hover:bg-cream-50 cursor-pointer text-left" onClick={o.act}>
+                <span className="text-2xl">{o.icon}</span>
+                <span>
+                  <span className="block text-[15px] font-medium text-ink-900">{o.title}</span>
+                  <span className="block text-xs text-ink-400 mt-0.5">{o.desc}</span>
+                </span>
+              </button>
+            ))}
+          </div>
+        )}
+        {mode === 'offer' && (
+          <div className="px-5 space-y-3">
+            <h3 className="font-semibold">我可以帮什么</h3>
+            <textarea className="input" rows={3} placeholder="比如:每周三晚可以陪练网球 / 周末可以帮忙拍照" value={text} onChange={e => setText(e.target.value)} autoFocus />
+            <button className="btn-primary w-full" disabled={!text.trim()} onClick={() => {
+              actions.addOfferCard(text)
+              toast('已添加到你的主页'); close()
+            }}>发布</button>
+            <p className="text-[11px] text-ink-300 text-center">会显示在你的主页,有匹配的求助时通知你</p>
+          </div>
+        )}
+        {(mode === 'story' || mode === 'event') && (
+          <div className="px-5 space-y-3">
+            <h3 className="font-semibold">{mode === 'story' ? '分享互助故事' : '发起社区活动'}</h3>
+            <input className="input" placeholder={mode === 'story' ? '起个自然的标题,比如:第一次向陌生人求助' : '活动主题,比如:周六梧桐公园清理'} value={title} onChange={e => setTitle(e.target.value)} autoFocus />
+            <textarea className="input" rows={3} placeholder={mode === 'story' ? '发生了什么?写下来让善意被看见。' : '时间、地点和安排…'} value={text} onChange={e => setText(e.target.value)} />
+            {mode === 'event' && (
+              <select className="input" value={communityId} onChange={e => setCommunityId(e.target.value)}>
+                <option value="">选择圈子</option>
+                {state.communities.map(c => <option key={c.id} value={c.id}>{c.emoji} {c.name}</option>)}
+              </select>
+            )}
+            <button className="btn-primary w-full" disabled={!title.trim() || !text.trim() || (mode === 'event' && !communityId)} onClick={() => {
+              actions.addPost({
+                kind: mode === 'story' ? 'story' : 'event', title: title.trim(), body: text.trim(),
+                coverEmoji: mode === 'story' ? '🤝' : '📅', communityId: communityId || undefined,
+                tags: mode === 'story' ? ['互助故事'] : ['社区活动'],
+              })
+              toast('已发布'); close(); nav('/')
+            }}>发布</button>
+          </div>
+        )}
+      </div>
     </div>
   )
 }
