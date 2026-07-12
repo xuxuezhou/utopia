@@ -1,9 +1,9 @@
 import { useMemo, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
-import { Settings, ChevronRight } from 'lucide-react'
+import { Settings, ChevronRight, Camera, ImagePlus } from 'lucide-react'
 import { useStore, useCurrentUser } from '../lib/store'
 import { PostCard, TaskCard, TrustPassport } from '../components/cards'
-import { Avatar, Empty, Modal, VerifyDot, toast } from '../components/ui'
+import { Avatar, Empty, Modal, VerifyDot, pickImage, toast } from '../components/ui'
 import { ReportModal } from './TaskDetail'
 
 function hashNum(id: string, mod: number, min: number) {
@@ -38,12 +38,46 @@ export default function Profile() {
 
   const community = state.communities.find(c => user.communityIds.includes(c.id))
 
+  const changeAvatar = async () => {
+    const url = await pickImage(320)
+    if (url) { actions.setAvatarImage(url); toast('头像已更新') }
+  }
+  const changeBg = async () => {
+    const url = await pickImage(1200)
+    if (url) { actions.setProfileBg(url); toast('主页背景已更新') }
+  }
+
   return (
     <div className="max-w-3xl mx-auto pb-10">
+      {/* 主页背景 */}
+      {(user.bgUrl || isMe) && (
+        <div className="relative -mx-3 md:mx-0 -mt-2 md:mt-0 md:rounded-2xl overflow-hidden">
+          {user.bgUrl
+            ? <img src={user.bgUrl} alt="" className="w-full h-36 md:h-48 object-cover" />
+            : <div className="w-full h-24 md:h-32 bg-gradient-to-br from-coral-50 via-cream-100 to-violet-50" />}
+          {isMe && (
+            <button className="absolute right-3 bottom-3 chip bg-black/40 text-white backdrop-blur !py-1.5 !px-3 cursor-pointer"
+              onClick={changeBg}>
+              <ImagePlus size={13} strokeWidth={2} /> {user.bgUrl ? '更换背景' : '设置主页背景'}
+            </button>
+          )}
+        </div>
+      )}
+
       {/* 顶部 */}
-      <div className="flex items-start gap-4 pt-3">
-        <Avatar user={user} size={76} link={false} />
-        <div className="flex-1 min-w-0">
+      <div className={`flex items-start gap-4 ${user.bgUrl || isMe ? '-mt-8 relative z-10' : 'pt-3'}`}>
+        <span className="relative shrink-0">
+          <span className="block rounded-full ring-[3px] ring-white">
+            <Avatar user={user} size={76} link={false} />
+          </span>
+          {isMe && (
+            <button className="absolute -right-0.5 -bottom-0.5 w-6 h-6 rounded-full bg-ink-900/80 text-white flex items-center justify-center cursor-pointer ring-2 ring-white"
+              onClick={changeAvatar} aria-label="上传头像">
+              <Camera size={13} strokeWidth={2} />
+            </button>
+          )}
+        </span>
+        <div className={`flex-1 min-w-0 ${user.bgUrl || isMe ? 'pt-9' : ''}`}>
           <div className="flex items-center gap-1.5 flex-wrap">
             <h1 className="text-lg font-semibold text-ink-900">{user.name}</h1>
             <VerifyDot level={user.level} />
@@ -57,7 +91,7 @@ export default function Profile() {
           </div>
         </div>
         {isMe && (
-          <button className="p-2 text-ink-500 cursor-pointer" onClick={() => setMenu(true)} aria-label="设置"><Settings size={20} strokeWidth={1.8} /></button>
+          <button className={`p-2 text-ink-500 cursor-pointer ${user.bgUrl || isMe ? 'pt-11' : ''}`} onClick={() => setMenu(true)} aria-label="设置"><Settings size={20} strokeWidth={1.8} /></button>
         )}
       </div>
 
@@ -134,6 +168,20 @@ export default function Profile() {
         <div className="space-y-1">
           {isMe ? (
             <>
+              <button className="w-full text-left px-3 py-3 rounded-xl hover:bg-cream-50 text-sm cursor-pointer flex items-center justify-between"
+                onClick={async () => { setMenu(false); await changeAvatar() }}>
+                上传头像 <Camera size={15} className="text-ink-300" />
+              </button>
+              <button className="w-full text-left px-3 py-3 rounded-xl hover:bg-cream-50 text-sm cursor-pointer flex items-center justify-between"
+                onClick={async () => { setMenu(false); await changeBg() }}>
+                更换主页背景 <ImagePlus size={15} className="text-ink-300" />
+              </button>
+              {(user.avatarUrl || user.bgUrl) && (
+                <button className="w-full text-left px-3 py-3 rounded-xl hover:bg-cream-50 text-sm text-ink-400 cursor-pointer"
+                  onClick={() => { actions.setAvatarImage(undefined); actions.setProfileBg(undefined); toast('已恢复默认头像与背景'); setMenu(false) }}>
+                  恢复默认头像与背景
+                </button>
+              )}
               {[['我的任务', '/mytasks'], ['积分中心', '/points'], ['我的圈子', '/circles'], ['信任与认证', '/trust'], ['安全中心', '/safety'], ['管理员后台', '/admin']].map(([label, to]) => (
                 <Link key={to} to={to} className="flex items-center justify-between px-3 py-3 rounded-xl hover:bg-cream-50 text-sm" onClick={() => setMenu(false)}>
                   {label} <ChevronRight size={15} className="text-ink-300" />

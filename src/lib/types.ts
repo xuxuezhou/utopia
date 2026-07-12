@@ -45,6 +45,8 @@ export interface User {
   name: string
   avatar: string          // emoji 头像
   avatarHue: number       // 头像背景色相
+  avatarUrl?: string      // 用户上传的头像(dataURL,优先于默认头像)
+  bgUrl?: string          // 个人主页背景图(dataURL)
   bio: string
   city: string
   languages: string[]

@@ -529,6 +529,18 @@ function buildActions(setState: (fn: (s: AppState) => AppState) => void, getStat
       })
       return saved
     },
+    setAvatarImage(dataUrl: string | undefined) {
+      mutate(d => {
+        const u = findUser(d, d.currentUserId!)
+        if (u) u.avatarUrl = dataUrl
+      })
+    },
+    setProfileBg(dataUrl: string | undefined) {
+      mutate(d => {
+        const u = findUser(d, d.currentUserId!)
+        if (u) u.bgUrl = dataUrl
+      })
+    },
     addOfferCard(text: string) {
       mutate(d => {
         const u = findUser(d, d.currentUserId!)

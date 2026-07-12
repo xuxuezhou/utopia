@@ -112,6 +112,10 @@ export default function Welcome() {
               {step < 3 ? '继续' : '完成,进入 Utopia(+50 pt)'}
             </button>
           </div>
+          <button className="block mx-auto mt-4 text-xs text-ink-300 hover:text-ink-500 cursor-pointer"
+            onClick={() => { actions.logout(); setStep(0); setMode('landing') }}>
+            退出登录,返回首页
+          </button>
         </div>
       </div>
     )
@@ -121,7 +125,9 @@ export default function Welcome() {
     <div className="min-h-screen bg-white">
       <header className="max-w-5xl mx-auto px-6 h-16 flex items-center justify-between">
         <Logo size={30} />
-        <button className="btn-outline" onClick={() => setMode('login')}>登录</button>
+        {mode === 'landing'
+          ? <button className="btn-outline" onClick={() => setMode('login')}>登录</button>
+          : <button className="btn-ghost" onClick={() => setMode('landing')}>← 返回</button>}
       </header>
 
       {mode === 'landing' && (

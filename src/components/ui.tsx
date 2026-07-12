@@ -22,6 +22,7 @@ export function Logo({ size = 28, withText = true }: { size?: number; withText?:
 export function Avatar({ user, size = 40, link = true }: { user?: User | null; size?: number; link?: boolean }) {
   const [broken, setBroken] = useState(false)
   if (!user) return <div className="rounded-full bg-cream-200" style={{ width: size, height: size }} />
+  const src = user.avatarUrl ?? `https://i.pravatar.cc/${size >= 60 ? 160 : 80}?u=utopia-${user.id}`
   const el = (
     <span
       className="relative rounded-full flex items-center justify-center shrink-0 overflow-hidden ring-1 ring-black/5 select-none"
@@ -29,9 +30,9 @@ export function Avatar({ user, size = 40, link = true }: { user?: User | null; s
       title={user.name}
     >
       {user.avatar}
-      {!broken && (
+      {(user.avatarUrl || !broken) && (
         <img
-          src={`https://i.pravatar.cc/${size >= 60 ? 160 : 80}?u=utopia-${user.id}`}
+          src={src}
           alt="" loading="lazy"
           className="absolute inset-0 w-full h-full object-cover"
           onError={() => setBroken(true)}
@@ -40,6 +41,33 @@ export function Avatar({ user, size = 40, link = true }: { user?: User | null; s
     </span>
   )
   return link ? <Link to={`/user/${user.id}`} onClick={e => e.stopPropagation()}>{el}</Link> : el
+}
+
+// 读取本地图片并压缩为 dataURL(存 LocalStorage,控制体积)
+export function pickImage(maxSize: number): Promise<string | null> {
+  return new Promise(resolve => {
+    const input = document.createElement('input')
+    input.type = 'file'
+    input.accept = 'image/*'
+    input.onchange = () => {
+      const file = input.files?.[0]
+      if (!file) return resolve(null)
+      const img = new Image()
+      const url = URL.createObjectURL(file)
+      img.onload = () => {
+        const scale = Math.min(1, maxSize / Math.max(img.width, img.height))
+        const canvas = document.createElement('canvas')
+        canvas.width = Math.round(img.width * scale)
+        canvas.height = Math.round(img.height * scale)
+        canvas.getContext('2d')!.drawImage(img, 0, 0, canvas.width, canvas.height)
+        URL.revokeObjectURL(url)
+        resolve(canvas.toDataURL('image/jpeg', 0.82))
+      }
+      img.onerror = () => { URL.revokeObjectURL(url); resolve(null) }
+      img.src = url
+    }
+    input.click()
+  })
 }
 
 // ============ 内容封面:真实照片优先,失败回退浅色模板 ============
