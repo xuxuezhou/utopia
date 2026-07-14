@@ -135,7 +135,7 @@ export default function Profile() {
       )}
 
       {/* 内容 Tab */}
-      <div className="flex justify-center gap-10 border-b border-cream-200 mt-5 mb-4 sticky top-0 md:top-14 bg-white z-20">
+      <div className="flex justify-center gap-10 border-b border-cream-200 mt-5 mb-4 sticky top-[var(--safe-top)] md:top-14 bg-white z-20">
         {([['share', '分享'], ['active', '正在互助'], ['done', '已完成'], ...(isMe ? [['saved', '收藏'] as const] : [])] as const).map(([k, label]) => (
           <button key={k} onClick={() => setTab(k as typeof tab)}
             className={`relative py-2.5 text-sm cursor-pointer ${tab === k ? 'text-ink-900 font-semibold' : 'text-ink-400'}`}>
@@ -204,7 +204,7 @@ export default function Profile() {
       </Modal>
 
       {!isMe && (
-        <button className="fixed right-4 bottom-20 md:bottom-8 w-9 h-9 rounded-full bg-white border border-cream-300 text-ink-400 cursor-pointer z-30" onClick={() => setMenu(true)}>⋯</button>
+        <button className="fixed right-4 bottom-[calc(5rem+var(--safe-bottom))] md:bottom-8 w-9 h-9 rounded-full bg-white border border-cream-300 text-ink-400 cursor-pointer z-30" onClick={() => setMenu(true)}>⋯</button>
       )}
       <ReportModal open={report} onClose={() => setReport(false)} targetType="user" targetId={user.id} />
     </div>

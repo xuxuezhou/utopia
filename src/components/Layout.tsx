@@ -21,6 +21,8 @@ export default function Layout() {
 
   return (
     <div className="min-h-screen bg-white">
+      {/* iOS 状态栏背板:遮住滚动到刘海区域下方的内容 */}
+      <div className="fixed top-0 inset-x-0 h-[var(--safe-top)] bg-white/95 backdrop-blur z-40 md:hidden" />
       {/* 桌面左侧导航 */}
       <aside className="hidden md:flex fixed inset-y-0 left-0 w-56 flex-col px-3 py-5 border-r border-cream-200 bg-white z-40">
         <Link to="/" className="px-4 mb-6"><Logo size={30} /></Link>
@@ -73,7 +75,7 @@ export default function Layout() {
         </div>
       </div>
 
-      <main className={`md:pl-56 ${hideBottomNav ? 'pb-24' : 'pb-20'} md:pb-10 md:pt-14`}>
+      <main className={`md:pl-56 pt-[var(--safe-top)] ${hideBottomNav ? 'pb-[calc(6rem+var(--safe-bottom))]' : 'pb-[calc(5rem+var(--safe-bottom))]'} md:pb-10 md:pt-14`}>
         <div className="max-w-[1200px] mx-auto px-3 md:px-6 pt-2 md:pt-5">
           <Outlet />
         </div>
@@ -81,7 +83,7 @@ export default function Layout() {
 
       {/* 移动底部导航 */}
       {!hideBottomNav && (
-        <nav className="fixed bottom-0 inset-x-0 z-40 bg-white border-t border-cream-200 md:hidden">
+        <nav className="fixed bottom-0 inset-x-0 z-40 bg-white border-t border-cream-200 md:hidden pb-[var(--safe-bottom)]">
           <div className="grid grid-cols-5 h-14 items-center">
             <NavLink to="/" end className={({ isActive }) => `flex flex-col items-center gap-0.5 text-[10px] ${isActive ? 'text-ink-900 font-semibold' : 'text-ink-400'}`}>
               <House size={21} strokeWidth={1.8} /> 首页
@@ -133,7 +135,7 @@ function PublishSheet({ open, onClose }: { open: boolean; onClose: () => void })
 
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40" onClick={close}>
-      <div className="bg-white rounded-t-2xl w-full sm:max-w-md pb-8 sheet-up" onClick={e => e.stopPropagation()}>
+      <div className="bg-white rounded-t-2xl w-full sm:max-w-md pb-[calc(2rem+var(--safe-bottom))] sheet-up" onClick={e => e.stopPropagation()}>
         <div className="w-9 h-1 rounded-full bg-cream-300 mx-auto mt-3 mb-4" />
         {mode === '' && (
           <div className="px-5 space-y-1">

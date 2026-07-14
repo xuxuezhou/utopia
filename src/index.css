@@ -58,6 +58,12 @@
   --shadow-nav: 0 1px 0 #F4F4F4;
 }
 
+/* iOS 安全区(刘海/灵动岛/Home 指示条);普通浏览器里为 0,不影响网页版 */
+:root {
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+}
+
 body {
   @apply bg-white text-ink-700 font-sans antialiased;
 }

@@ -37,7 +37,7 @@ export default function Welcome() {
   if (mode === 'onboarding') {
     const steps = ['选择社区', '我可以帮助什么', '我可能需要什么', '安全设置']
     return (
-      <div className="min-h-screen bg-white flex items-center justify-center p-4">
+      <div className="min-h-screen bg-white flex items-center justify-center p-4 pt-[calc(1rem+var(--safe-top))] pb-[calc(1rem+var(--safe-bottom))]">
         <div className="card w-full max-w-lg p-8 fade-up">
           <Logo size={32} />
           <div className="flex gap-1.5 my-6">
@@ -122,7 +122,7 @@ export default function Welcome() {
   }
 
   return (
-    <div className="min-h-screen bg-white">
+    <div className="min-h-screen bg-white pt-[var(--safe-top)] pb-[var(--safe-bottom)]">
       <header className="max-w-5xl mx-auto px-6 h-16 flex items-center justify-between">
         <Logo size={30} />
         {mode === 'landing'

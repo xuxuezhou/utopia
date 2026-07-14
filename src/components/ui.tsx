@@ -203,7 +203,7 @@ export function Modal({ open, onClose, title, children, wide = false }: { open: 
           <h3 className="font-semibold text-ink-900 text-[15px]">{title}</h3>
           <button onClick={onClose} className="w-8 h-8 rounded-full hover:bg-cream-100 text-ink-400 cursor-pointer">✕</button>
         </div>
-        <div className="px-5 pb-6">{children}</div>
+        <div className="px-5 pb-[calc(1.5rem+var(--safe-bottom))] sm:pb-6">{children}</div>
       </div>
     </div>
   )
@@ -239,7 +239,7 @@ export function ToastHost() {
   }, [msg])
   if (!msg) return null
   return (
-    <div key={msg.key} className="fixed left-1/2 bottom-24 z-[70] toast-anim pointer-events-none">
+    <div key={msg.key} className="fixed left-1/2 bottom-[calc(6rem+var(--safe-bottom))] z-[70] toast-anim pointer-events-none">
       <div className="bg-ink-900/90 text-white text-sm rounded-full px-4 py-2 whitespace-nowrap">{msg.text}</div>
     </div>
   )

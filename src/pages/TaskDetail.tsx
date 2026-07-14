@@ -230,7 +230,7 @@ export default function TaskDetail() {
 
       {/* 底部固定操作栏 */}
       {task.status !== 'blocked' && (
-        <div className="fixed bottom-0 inset-x-0 md:left-56 z-40 bg-white border-t border-cream-200">
+        <div className="fixed bottom-0 inset-x-0 md:left-56 z-40 bg-white border-t border-cream-200 pb-[var(--safe-bottom)] md:pb-0">
           <div className="max-w-xl mx-auto flex items-center gap-3 px-4 py-2.5">
             <div className="flex-1 flex items-center gap-2 bg-cream-100 rounded-full px-4 py-2">
               <input className="flex-1 bg-transparent text-sm outline-none placeholder:text-ink-300" placeholder="想问点什么…"

@@ -36,8 +36,8 @@ export default function Messages() {
   // ============ 会话页 ============
   if (current) {
     return (
-      <div className="max-w-xl mx-auto flex flex-col h-[calc(100dvh-1rem)] md:h-[calc(100dvh-6rem)]">
-        <div className="flex items-center gap-2.5 py-2.5 border-b border-cream-200 bg-white sticky top-0 z-20">
+      <div className="max-w-xl mx-auto flex flex-col h-[calc(100dvh-1rem-var(--safe-top)-var(--safe-bottom))] md:h-[calc(100dvh-6rem)]">
+        <div className="flex items-center gap-2.5 py-2.5 border-b border-cream-200 bg-white sticky top-[var(--safe-top)] z-20">
           <button className="p-1.5 text-ink-700 cursor-pointer" onClick={() => nav('/messages')}><ArrowLeft size={20} strokeWidth={1.8} /></button>
           <Avatar user={other} size={34} />
           <div className="flex-1 min-w-0">
