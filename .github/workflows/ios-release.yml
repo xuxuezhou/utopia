@@ -1,0 +1,59 @@
+name: iOS Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  build-ios:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build web assets
+        run: npm run build
+
+      - name: Sync Capacitor iOS
+        run: npx cap sync ios
+
+      - name: Build unsigned iOS app
+        run: |
+          xcodebuild \
+            -project ios/App/App.xcodeproj \
+            -scheme App \
+            -configuration Release \
+            -sdk iphoneos \
+            -derivedDataPath ios/build \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGN_IDENTITY="" \
+            build
+
+      - name: Package .ipa
+        run: |
+          cd ios/build/Build/Products/Release-iphoneos
+          mkdir Payload
+          cp -R App.app Payload/
+          zip -qry "Utopia-${GITHUB_REF_NAME}-unsigned.ipa" Payload
+          shasum -a 256 "Utopia-${GITHUB_REF_NAME}-unsigned.ipa" > "Utopia-${GITHUB_REF_NAME}-unsigned.ipa.sha256"
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: Utopia ${{ github.ref_name }}
+          generate_release_notes: true
+          files: |
+            ios/build/Build/Products/Release-iphoneos/Utopia-${{ github.ref_name }}-unsigned.ipa
+            ios/build/Build/Products/Release-iphoneos/Utopia-${{ github.ref_name }}-unsigned.ipa.sha256

@@ -1,16 +1,41 @@
 # Utopia · 让顺手的善意,抵达身边的人
 
-基于真实身份、社区关系和互助积分的本地互助社交网络(网页版 MVP 演示)。
+基于真实身份、社区关系和互助积分的本地互助社交网络(网页版 MVP 演示 + iOS App)。
 
 > Turn nearby strangers into helpful neighbors.
 
-## 运行
+## 运行(网页版)
 
 ```bash
 npm install
 npm run dev      # http://localhost:5173
 npm run build    # 生产构建
 ```
+
+## iOS App 安装
+
+iOS 版基于 [Capacitor](https://capacitorjs.com/) 将同一套 Web 应用打包为原生应用,每次推送 `v*` 标签后由 GitHub Actions 自动构建并发布。
+
+### 方式一:安装 Release 中的 .ipa(免 Xcode)
+
+1. 前往 [Releases](https://github.com/xuxuezhou/utopia/releases) 下载最新的 `Utopia-vX.Y.Z-unsigned.ipa`。
+2. 该 ipa **未签名**,不能直接安装,需要用你自己的 Apple ID 侧载(sideload):
+   - **[Sideloadly](https://sideloadly.io/)**(macOS/Windows):iPhone 连接电脑 → 拖入 ipa → 填 Apple ID → Start。
+   - **[AltStore](https://altstore.io/)**:先在电脑上装 AltServer 并给手机安装 AltStore,然后在 AltStore 中打开 ipa 安装。
+3. 免费 Apple ID 签名有效期 7 天,过期后重新侧载即可(数据保留)。首次打开若提示「不受信任的开发者」,前往 设置 → 通用 → VPN 与设备管理 中信任。
+
+### 方式二:从源码构建(需 macOS + Xcode)
+
+```bash
+git clone https://github.com/xuxuezhou/utopia.git
+cd utopia
+npm install
+npm run build
+npx cap sync ios
+npx cap open ios   # 在 Xcode 中打开
+```
+
+在 Xcode 中选择你的开发者签名(Signing & Capabilities → Team),连接 iPhone 后直接 Run 即可安装到真机;不插手机则可直接跑 iOS 模拟器。
 
 ## 演示说明
 
@@ -31,10 +56,12 @@ npm run build    # 生产构建
 
 ## 技术栈
 
-Vite · React 19 · TypeScript · Tailwind CSS 4 · React Router 7 · Immer
+Vite · React 19 · TypeScript · Tailwind CSS 4 · React Router 7 · Immer · Capacitor 8(iOS)
 
 - `src/lib/types.ts` — 核心数据实体(User/Task/LedgerEntry/Dispute/…)
 - `src/lib/store.tsx` — 业务状态机:托管、释放、退款、争议冻结与裁决;余额永远从账本推导
 - `src/lib/risk.ts` — 无外部 AI 的降级实现:关键词风险分级(T0–T4)、自然语言任务解析、积分建议、聊天风控
 - `src/data/seed.ts` — 初始模拟数据
 - `src/pages/Admin.tsx` — 管理员后台(审核/事件/争议/账本/积分经济/审计)
+- `ios/` — Capacitor 生成的 iOS 原生工程(SPM 依赖,无 CocoaPods)
+- `.github/workflows/ios-release.yml` — 推送 `v*` 标签时自动构建未签名 ipa 并发布 GitHub Release
