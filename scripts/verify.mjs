@@ -428,7 +428,7 @@ try {
   await page.goto(`${BASE}/#/user/me`, { waitUntil: 'networkidle0' })
   await sleep(500)
   text = await bodyText(page)
-  ok('主页装扮入口(会员)与 /user/me 路由', text.includes('主页装扮'))
+  ok('主页装扮入口(会员)与 /user/me 路由', text.includes('装扮'))
 
   // ---------- 多社区管理(Plus) ----------
   await page.goto(`${BASE}/#/circles`, { waitUntil: 'networkidle0' })

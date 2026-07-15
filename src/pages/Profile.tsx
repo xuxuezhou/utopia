@@ -63,16 +63,15 @@ export default function Profile() {
               ? <div className="w-full h-24 md:h-32" style={{ background: `linear-gradient(135deg, oklch(0.93 0.06 ${user.profileTheme.hue}), oklch(0.97 0.02 ${(user.profileTheme.hue + 40) % 360}), oklch(0.9 0.08 ${(user.profileTheme.hue + 320) % 360}))` }} />
               : <div className="w-full h-24 md:h-32 bg-gradient-to-br from-coral-50 via-cream-100 to-violet-50" />}
           {isMe && (
-            <button className="absolute left-3 bottom-3 chip bg-black/40 text-white backdrop-blur !py-1.5 !px-3 cursor-pointer"
-              onClick={() => hasPlusBenefits(me) ? setTheme(true) : toast('主页装扮是 Plus / Pro 会员功能')}>
-              🎨 主页装扮{!hasPlusBenefits(me) && ' 🔒'}
-            </button>
-          )}
-          {isMe && (
-            <button className="absolute right-3 bottom-3 chip bg-black/40 text-white backdrop-blur !py-1.5 !px-3 cursor-pointer"
-              onClick={changeBg}>
-              <ImagePlus size={13} strokeWidth={2} /> {user.bgUrl ? '更换背景' : '设置主页背景'}
-            </button>
+            <div className="absolute right-3 bottom-3 flex gap-2">
+              <button className="chip bg-black/40 text-white backdrop-blur !py-1.5 !px-3 cursor-pointer"
+                onClick={() => hasPlusBenefits(me) ? setTheme(true) : toast('主页装扮是 Plus / Pro 会员功能')}>
+                🎨 装扮{!hasPlusBenefits(me) && ' 🔒'}
+              </button>
+              <button className="chip bg-black/40 text-white backdrop-blur !py-1.5 !px-3 cursor-pointer" onClick={changeBg}>
+                <ImagePlus size={13} strokeWidth={2} /> {user.bgUrl ? '更换背景' : '设置背景'}
+              </button>
+            </div>
           )}
         </div>
       )}
