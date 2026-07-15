@@ -14,7 +14,7 @@ export function TaskCard({ task, promoted = false }: { task: Task; promoted?: bo
   const showStatus = !['open', 'applied'].includes(task.status)
 
   return (
-    <div className="cursor-pointer card-hover fade-up" onClick={() => nav(`/task/${task.id}`)}>
+    <div className="cursor-pointer card-hover fade-up" data-tour="task-card" onClick={() => nav(`/task/${task.id}`)}>
       <Cover seed={task.id} emoji={task.images[0] ?? '🤝'} hue={(task.id.charCodeAt(1) * 47) % 360}>
         <span className="absolute left-2 top-2 chip bg-white/85 text-ink-500 backdrop-blur !px-2">{task.online ? '线上' : '求助'}</span>
         {showStatus && (

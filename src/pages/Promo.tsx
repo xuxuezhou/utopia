@@ -70,7 +70,7 @@ export default function Promo() {
         )}
       </div>
 
-      <div className="card p-5">
+      <div className="card p-5" data-tour="promo-base">
         <h2 className="font-semibold text-sm mb-1">你的任务的基础曝光(免费保障)</h2>
         <p className="text-xs text-ink-400 mb-3">每个通过审核的任务,无论是否付费,都会:出现在所属社区最新任务流、展示给附近合适的用户、获得至少一次匹配推荐、可被搜索与分享。</p>
         <div className="space-y-2">

@@ -103,7 +103,7 @@ export default function CalendarPage() {
       </p>
 
       {/* Google 式月视图:格子内直接显示事件条 */}
-      <div className="card overflow-hidden">
+      <div className="card overflow-hidden" data-tour="calendar-grid">
         <div className="grid grid-cols-7 text-center text-[11px] text-ink-400 border-b border-cream-200 py-1.5">
           {WEEK.map(w => <div key={w}>{w}</div>)}
         </div>

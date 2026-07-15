@@ -396,25 +396,49 @@ try {
   text = await bodyText(page)
   ok('会员功能: 订阅页标注权益入口且无规划中', text.includes('高级筛选」') && text.includes('主页装扮') && !text.includes('规划中'))
 
-  // ---------- 新手教程完整走查(从更多菜单重新进入,12 步含 Plus/Pro) ----------
+  // ---------- 新手教程完整走查(交互式:点击真实按钮推进,24 步覆盖全部功能) ----------
+  const waitFor = async (fn, timeout = 5000) => {
+    const t0 = Date.now()
+    while (Date.now() - t0 < timeout) {
+      if (await fn()) return true
+      await sleep(200)
+    }
+    return false
+  }
   await page.goto(`${BASE}/#/`, { waitUntil: 'networkidle0' })
   await sleep(300)
   await clickByText(page, 'button', '更多')
   await sleep(300)
   await clickByText(page, 'button', '新手教程')
   await sleep(600)
-  const TOUR_TITLES = ['发现页', '附近互助', '发布求助', '一次完整互助', '积分中心', '圈子', '我的日历', '安全中心', 'Utopia Plus', 'Utopia Pro', '任务加速与推广数据', '管理员后台']
+  const TOUR = [
+    ['欢迎来到 Utopia', 'start'], ['三个信息流', 'next'], ['搜索', 'click'], ['高级筛选与保存条件', 'next'],
+    ['附近互助', 'click'], ['打开一个任务', 'click'], ['任务详情', 'next'], ['发布', 'click'],
+    ['发布求助', 'click'], ['自然语言发布', 'next'], ['消息', 'click'], ['我的主页', 'click'],
+    ['主页与信任', 'next'], ['设置菜单', 'click'], ['我的日历', 'click'], ['内置日历(免费)', 'next'],
+    ['积分中心', 'next'], ['圈子与活动', 'next'], ['安全中心(免费)', 'next'], ['会员订阅', 'next'],
+    ['Utopia Pro', 'next'], ['任务加速与推广数据', 'next'], ['机构版与公益赞助', 'next'], ['管理员后台', 'last'],
+  ]
   let tourOk = true, tourDetail = ''
-  for (let i = 0; i < TOUR_TITLES.length; i++) {
-    const t2 = await bodyText(page)
-    if (!t2.includes(TOUR_TITLES[i]) || !t2.includes(`${i + 1}/${TOUR_TITLES.length}`)) {
-      tourOk = false; tourDetail = `第${i + 1}步未显示「${TOUR_TITLES[i]}」`; break
+  for (let i = 0; i < TOUR.length; i++) {
+    const [title, act] = TOUR[i]
+    const shown = await waitFor(async () => {
+      const t2 = await bodyText(page)
+      return t2.includes(`${i + 1}/${TOUR.length}`) && t2.includes(title)
+    })
+    if (!shown) { tourOk = false; tourDetail = `第${i + 1}步未显示「${title}」`; break }
+    if (act === 'click') {
+      // 必须点击页面上被聚光灯高亮的真实按钮才能前进
+      const found = await waitFor(() => page.evaluate(() => !!document.querySelector('[data-tour-current]')))
+      if (!found) { tourOk = false; tourDetail = `第${i + 1}步「${title}」未找到高亮目标`; break }
+      await page.evaluate(() => document.querySelector('[data-tour-current]')?.click())
+    } else {
+      await clickByText(page, 'button', act === 'start' ? '开始导览' : act === 'last' ? '开始使用 Utopia' : '继续')
     }
-    await clickByText(page, 'button', i === TOUR_TITLES.length - 1 ? '开始使用 Utopia' : '继续')
     await sleep(500)
   }
   const tourGone = !(await bodyText(page)).includes('新手教程 ')
-  ok('新手教程: 12 步完整走查(含 Plus/Pro)并正常结束', tourOk && tourGone, tourDetail)
+  ok('新手教程: 24 步交互式走查(点击真实按钮推进,覆盖全部功能)', tourOk && tourGone, tourDetail)
 
   // ---------- 搜索页只有一个搜索框 ----------
   await page.goto(`${BASE}/#/search`, { waitUntil: 'networkidle0' })

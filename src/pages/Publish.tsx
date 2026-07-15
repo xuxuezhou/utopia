@@ -238,6 +238,7 @@ export default function Publish() {
       <p className="text-sm text-ink-400 mb-5">像发朋友圈一样说出来就行,系统会帮你整理。求助不是麻烦别人,而是给别人一个帮助你的机会。</p>
       <textarea
         className="w-full bg-cream-100 rounded-2xl px-4 py-3.5 text-[15px] leading-relaxed outline-none placeholder:text-ink-300 focus:bg-cream-50 transition min-h-36"
+        data-tour="publish-input"
         autoFocus
         placeholder="比如:我想找一个人周日下午陪我打一个小时网球,最好是中等水平,在学校附近。"
         value={input} onChange={e => setInput(e.target.value)} />

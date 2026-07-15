@@ -19,7 +19,7 @@ export default function Org() {
         {ORG_AUDIENCES.map(a => <span key={a} className="chip bg-cream-100 text-ink-500">{a}</span>)}
       </div>
 
-      <div className="grid sm:grid-cols-2 gap-2.5">
+      <div className="grid sm:grid-cols-2 gap-2.5" data-tour="org-page">
         {ORG_FEATURES.map(f => (
           <div key={f.title} className="card p-3.5 flex gap-3">
             <span className="text-xl">{f.icon}</span>

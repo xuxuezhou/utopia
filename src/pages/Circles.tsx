@@ -19,7 +19,7 @@ export default function Circles() {
 
       {/* Plus 多社区管理 */}
       {joined.length > 0 && (
-        <div className="card p-4 mb-5">
+        <div className="card p-4 mb-5" data-tour="circles-manage">
           <div className="flex items-center gap-2 mb-1">
             <h3 className="font-semibold text-sm">我的圈子管理</h3>
             <span className="text-[10px] text-coral-500 font-semibold">Plus</span>

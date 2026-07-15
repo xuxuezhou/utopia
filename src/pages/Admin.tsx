@@ -23,7 +23,7 @@ export default function Admin() {
 
   return (
     <div className="grid md:grid-cols-[200px_1fr] gap-5 items-start">
-      <div className="card p-2 md:sticky md:top-20">
+      <div className="card p-2 md:sticky md:top-20" data-tour="admin-nav">
         <div className="px-3 py-2 text-xs font-semibold text-ink-300 uppercase tracking-wide">Utopia Admin</div>
         <div className="flex md:flex-col gap-1 overflow-x-auto">
           {SECTIONS.map(s => (

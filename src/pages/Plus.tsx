@@ -82,9 +82,9 @@ export default function Plus() {
       </div>
 
       {/* 三档方案 */}
-      <div className="grid sm:grid-cols-3 gap-3 items-stretch">
+      <div className="grid sm:grid-cols-3 gap-3 items-stretch" data-tour="plus-tiers">
         {TIERS.map(t => (
-          <div key={t.key} className={`card p-5 flex flex-col relative ${t.highlight ? '!border-coral-400 shadow-card' : ''}`}>
+          <div key={t.key} data-tour={t.key === 'pro' ? 'plus-pro' : undefined} className={`card p-5 flex flex-col relative ${t.highlight ? '!border-coral-400 shadow-card' : ''}`}>
             {t.highlight && <span className="absolute -top-2.5 left-1/2 -translate-x-1/2 chip bg-coral-500 text-white !text-[10px]">{t.key === 'pro' ? '推荐升级' : '最受欢迎'}</span>}
             <div className="font-semibold">{t.name}</div>
             <div className="mt-2"><span className="text-2xl font-bold text-ink-900">{t.price}</span><span className="text-xs text-ink-400">{t.unit}</span></div>

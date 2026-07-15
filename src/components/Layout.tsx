@@ -29,15 +29,15 @@ export default function Layout() {
         <Link to="/" className="px-4 mb-6"><Logo size={30} /></Link>
         <nav className="space-y-1 flex-1">
           <NavLink to="/" end className={sideCls}><Compass size={20} strokeWidth={1.8} /> 发现</NavLink>
-          <NavLink to="/nearby" className={sideCls}><MapPin size={20} strokeWidth={1.8} /> 附近</NavLink>
+          <NavLink to="/nearby" className={sideCls} data-tour="nav-nearby"><MapPin size={20} strokeWidth={1.8} /> 附近</NavLink>
           <NavLink to="/circles" className={sideCls}><UsersRound size={20} strokeWidth={1.8} /> 圈子</NavLink>
-          <NavLink to="/messages" className={sideCls}>
+          <NavLink to="/messages" className={sideCls} data-tour="nav-messages">
             <span className="relative"><MessageCircle size={20} strokeWidth={1.8} />
               {unread > 0 && <span className="absolute -top-1 -right-1.5 min-w-3.5 h-3.5 px-0.5 rounded-full bg-coral-500 text-white text-[9px] flex items-center justify-center">{unread}</span>}
             </span> 消息
           </NavLink>
-          <NavLink to={me ? `/user/${me.id}` : '/welcome'} className={sideCls}><UserIcon size={20} strokeWidth={1.8} /> 我的</NavLink>
-          <button className="w-full mt-4 btn-primary !py-2.5 !text-[15px]" onClick={() => setSheet(true)}>
+          <NavLink to={me ? `/user/${me.id}` : '/welcome'} className={sideCls} data-tour="nav-me"><UserIcon size={20} strokeWidth={1.8} /> 我的</NavLink>
+          <button className="w-full mt-4 btn-primary !py-2.5 !text-[15px]" data-tour="nav-publish" onClick={() => setSheet(true)}>
             <Plus size={18} strokeWidth={2.2} /> 发布
           </button>
         </nav>
@@ -78,7 +78,7 @@ export default function Layout() {
         <div className="hidden md:block fixed top-0 left-56 right-0 h-14 bg-white/95 backdrop-blur z-30 border-b border-cream-100">
           <div className="max-w-[1200px] mx-auto h-full flex items-center px-6">
             <button className="flex items-center gap-2 w-80 bg-cream-100 rounded-full px-4 py-2 text-sm text-ink-300 cursor-pointer hover:bg-cream-200 transition"
-              onClick={() => nav('/search')}>
+              data-tour="nav-search" onClick={() => nav('/search')}>
               <Search size={16} strokeWidth={1.8} /> 搜索任务、用户或社区
             </button>
           </div>
@@ -98,20 +98,20 @@ export default function Layout() {
             <NavLink to="/" end className={({ isActive }) => `flex flex-col items-center gap-0.5 text-[10px] ${isActive ? 'text-ink-900 font-semibold' : 'text-ink-400'}`}>
               <House size={21} strokeWidth={1.8} /> 首页
             </NavLink>
-            <NavLink to="/nearby" className={({ isActive }) => `flex flex-col items-center gap-0.5 text-[10px] ${isActive ? 'text-ink-900 font-semibold' : 'text-ink-400'}`}>
+            <NavLink to="/nearby" data-tour="nav-nearby" className={({ isActive }) => `flex flex-col items-center gap-0.5 text-[10px] ${isActive ? 'text-ink-900 font-semibold' : 'text-ink-400'}`}>
               <MapPin size={21} strokeWidth={1.8} /> 附近
             </NavLink>
-            <button className="flex items-center justify-center cursor-pointer" onClick={() => setSheet(true)} aria-label="发布">
+            <button className="flex items-center justify-center cursor-pointer" data-tour="nav-publish" onClick={() => setSheet(true)} aria-label="发布">
               <span className="w-11 h-8 rounded-[10px] bg-coral-500 text-white flex items-center justify-center shadow-card">
                 <Plus size={20} strokeWidth={2.4} />
               </span>
             </button>
-            <NavLink to="/messages" className={({ isActive }) => `relative flex flex-col items-center gap-0.5 text-[10px] ${isActive ? 'text-ink-900 font-semibold' : 'text-ink-400'}`}>
+            <NavLink to="/messages" data-tour="nav-messages" className={({ isActive }) => `relative flex flex-col items-center gap-0.5 text-[10px] ${isActive ? 'text-ink-900 font-semibold' : 'text-ink-400'}`}>
               <span className="relative"><MessageCircle size={21} strokeWidth={1.8} />
                 {unread > 0 && <span className="absolute -top-1 -right-1.5 min-w-3.5 h-3.5 px-0.5 rounded-full bg-coral-500 text-white text-[9px] flex items-center justify-center">{unread}</span>}
               </span> 消息
             </NavLink>
-            <NavLink to={me ? `/user/${me.id}` : '/welcome'} className={({ isActive }) => `flex flex-col items-center gap-0.5 text-[10px] ${isActive ? 'text-ink-900 font-semibold' : 'text-ink-400'}`}>
+            <NavLink to={me ? `/user/${me.id}` : '/welcome'} data-tour="nav-me" className={({ isActive }) => `flex flex-col items-center gap-0.5 text-[10px] ${isActive ? 'text-ink-900 font-semibold' : 'text-ink-400'}`}>
               <UserIcon size={21} strokeWidth={1.8} /> 我
             </NavLink>
           </div>
@@ -151,7 +151,7 @@ function PublishSheet({ open, onClose }: { open: boolean; onClose: () => void })
         {mode === '' && (
           <div className="px-5 space-y-1">
             {OPTIONS.map(o => (
-              <button key={o.title} className="w-full flex items-center gap-3.5 px-3 py-3.5 rounded-xl hover:bg-cream-50 cursor-pointer text-left" onClick={o.act}>
+              <button key={o.title} data-tour={o.title === '发布求助' ? 'sheet-help' : undefined} className="w-full flex items-center gap-3.5 px-3 py-3.5 rounded-xl hover:bg-cream-50 cursor-pointer text-left" onClick={o.act}>
                 <span className="text-2xl">{o.icon}</span>
                 <span>
                   <span className="block text-[15px] font-medium text-ink-900">{o.title}</span>

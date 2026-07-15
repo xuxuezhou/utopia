@@ -128,7 +128,7 @@ export default function Safety() {
       </div>
 
       {/* 广告与推广偏好 */}
-      <div className="card p-5">
+      <div className="card p-5" data-tour="safety-adprefs">
         <h3 className="font-semibold mb-1">广告与推广偏好</h3>
         <p className="text-xs text-ink-400 mb-4 leading-relaxed">
           Utopia 只投放明确标注的本地情境广告,绝不使用你的私聊内容、精确住址、实时位置、医疗心理状态或任务困难做广告定向;聊天、任务执行和安全中心永远没有广告。

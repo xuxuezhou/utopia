@@ -106,7 +106,7 @@ export default function Feed() {
   return (
     <div className="-mt-1">
       {/* 移动端顶栏:文字 Tab + 搜索 */}
-      <div className="md:hidden sticky top-[var(--safe-top)] z-30 bg-white/95 backdrop-blur -mx-3 px-3">
+      <div className="md:hidden sticky top-[var(--safe-top)] z-30 bg-white/95 backdrop-blur -mx-3 px-3" data-tour="feed-tabs">
         <div className="flex items-center h-11">
           <div className="flex-1 flex items-center justify-center gap-7">
             {([['follow', '关注'], ['discover', '发现'], ['nearby', '附近']] as const).map(([k, label]) => (
@@ -117,14 +117,14 @@ export default function Feed() {
               </button>
             ))}
           </div>
-          <button className="p-2 text-ink-700 cursor-pointer" onClick={() => nav('/search')} aria-label="搜索">
+          <button className="p-2 text-ink-700 cursor-pointer" data-tour="nav-search" onClick={() => nav('/search')} aria-label="搜索">
             <Search size={20} strokeWidth={1.8} />
           </button>
         </div>
       </div>
 
       {/* 桌面端 Tab */}
-      <div className="hidden md:flex items-center gap-6 mb-1">
+      <div className="hidden md:flex items-center gap-6 mb-1" data-tour="feed-tabs">
         {([['follow', '关注'], ['discover', '发现'], ['nearby', '附近']] as const).map(([k, label]) => (
           <button key={k} onClick={() => setTab(k)}
             className={`relative pb-2 text-[17px] cursor-pointer transition-colors ${tab === k ? 'text-ink-900 font-semibold' : 'text-ink-400 hover:text-ink-600'}`}>

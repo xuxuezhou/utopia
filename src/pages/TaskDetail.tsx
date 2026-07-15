@@ -105,7 +105,7 @@ export default function TaskDetail() {
       </div>
 
       {/* 结构化信息 */}
-      <div className="mt-4 bg-cream-100 rounded-xl px-4 py-3.5 space-y-2.5 text-sm text-ink-700">
+      <div className="mt-4 bg-cream-100 rounded-xl px-4 py-3.5 space-y-2.5 text-sm text-ink-700" data-tour="task-info">
         <div className="flex items-center gap-2.5"><Calendar size={16} className="text-ink-400 shrink-0" strokeWidth={1.8} />{fmtDate(task.date, task.startTime)} · 约 {task.durationMin >= 60 ? `${task.durationMin / 60} 小时` : `${task.durationMin} 分钟`}</div>
         <div className="flex items-center gap-2.5"><MapPin size={16} className="text-ink-400 shrink-0" strokeWidth={1.8} />{task.online ? '线上进行' : `${task.locationText}${task.distanceKm > 0 ? ` · 距离你 ${task.distanceKm} km` : ''} · ${task.publicPlace ? '公共场所' : '需要上门'}`}</div>
         <div className="flex items-center gap-2.5"><Sparkles size={16} className="text-ink-400 shrink-0" strokeWidth={1.8} /><span className="text-coral-500 font-semibold">{task.points} pt</span><span className="text-ink-300 text-xs">另 {task.serviceFee} pt 服务积分,匹配后一并托管</span></div>

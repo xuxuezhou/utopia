@@ -30,7 +30,7 @@ export default function Points() {
     <div className="max-w-3xl mx-auto">
       <h1 className="text-xl font-semibold mb-5">积分中心</h1>
 
-      <div className="card p-6 mb-4 bg-gradient-to-br from-coral-50 to-white !border-coral-100">
+      <div className="card p-6 mb-4 bg-gradient-to-br from-coral-50 to-white !border-coral-100" data-tour="points-card">
         <div className="text-sm text-ink-400 mb-1">Utopia Points</div>
         <div className="text-4xl font-bold text-coral-500">{availablePoints(state, me.id)} <span className="text-lg font-medium">pt</span></div>
         <div className="grid grid-cols-3 gap-3 mt-5">
