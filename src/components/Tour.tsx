@@ -52,34 +52,49 @@ export default function Tour() {
   const [stuck, setStuck] = useState(false)
   const tick = useRef(0)
 
+  const [visible, setVisible] = useState(false)
+
   useEffect(() => {
     if (!s || step === undefined) return
-    setRect(null); setStuck(false); tick.current = 0
+    setStuck(false); tick.current = 0
     // 不在该步所在页面时自动前往
     const onRoute = !s.route || loc.pathname.startsWith(s.routePrefix ?? s.route)
     if (!onRoute) nav(s.route!)
 
     let el: HTMLElement | null = null
+    let scrolled = false
     const advance = () => actions.setTourStep(step + 1)
-    const iv = setInterval(() => {
+    const check = () => {
       tick.current++
-      if (!s.anchor) return
+      if (!s.anchor) { setVisible(false); return }
       const found = [...document.querySelectorAll<HTMLElement>(`[data-tour="${s.anchor}"]`)]
         .find(c => { const r = c.getBoundingClientRect(); return r.width > 2 && r.height > 2 }) ?? null
       if (found) {
         if (found !== el) {
           if (el) { el.removeEventListener('click', advance, true); el.removeAttribute('data-tour-current') }
           el = found
+          scrolled = false
           el.setAttribute('data-tour-current', '1')
           if (s.advance === 'click') el.addEventListener('click', advance, { capture: true })
         }
         const r = el.getBoundingClientRect()
+        // 目标不在舒适视野内时,平滑滚动到屏幕中部(只滚一次)
+        if (!scrolled && (r.top < 70 || r.bottom > window.innerHeight - 230)) {
+          scrolled = true
+          el.scrollIntoView({ behavior: 'smooth', block: 'center' })
+        } else if (r.top >= -10 && r.bottom <= window.innerHeight + 10) {
+          scrolled = true
+        }
+        // 聚光灯位置带过渡动画,在新旧目标之间平滑滑移
         setRect({ left: r.left, top: r.top, width: r.width, height: r.height })
+        setVisible(true)
       } else {
-        setRect(null)
-        if (tick.current > 12) setStuck(true)   // 3 秒仍找不到目标,提供跳过此步
+        setVisible(false)  // 淡出而非消失,找到新目标后滑移过去
+        if (tick.current > 25) setStuck(true)   // 3 秒仍找不到目标,提供跳过此步
       }
-    }, 250)
+    }
+    check()
+    const iv = setInterval(check, 120)
     return () => {
       clearInterval(iv)
       if (el) { el.removeEventListener('click', advance, true); el.removeAttribute('data-tour-current') }
@@ -90,21 +105,21 @@ export default function Tour() {
   if (!s || step === undefined) return null
   const last = step === STEPS.length - 1
   // 目标靠近底部时,卡片改到顶部,避免遮挡
-  const cardOnTop = rect !== null && rect.top + rect.height > window.innerHeight - 260
+  const cardOnTop = visible && rect !== null && rect.top + rect.height > window.innerHeight - 260
 
   return (
     <>
-      {/* 聚光灯:压暗四周,圈出目标按钮;不拦截点击 */}
+      {/* 聚光灯:压暗四周,圈出目标按钮;不拦截点击;步骤切换时平滑滑移/淡入淡出 */}
       {rect && (
         <div
-          className="fixed z-[65] pointer-events-none rounded-xl border-2 border-coral-400 transition-all duration-300"
+          className={`fixed z-[65] pointer-events-none rounded-xl border-2 border-coral-400 transition-all duration-300 ease-out ${visible ? 'opacity-100' : 'opacity-0'}`}
           style={{
             left: rect.left - 6, top: rect.top - 6, width: rect.width + 12, height: rect.height + 12,
             boxShadow: '0 0 0 9999px rgba(17,17,17,0.45)',
           }}
         />
       )}
-      <div className={`fixed inset-x-3 md:inset-x-auto md:right-8 md:w-96 z-[66] fade-up ${cardOnTop ? 'top-[calc(var(--safe-top)+0.75rem)] md:top-6' : 'bottom-[calc(4.5rem+var(--safe-bottom))] md:bottom-8'}`} key={step}>
+      <div className={`fixed inset-x-3 md:inset-x-auto md:right-8 md:w-96 z-[66] transition-all duration-300 ${cardOnTop ? 'top-[calc(var(--safe-top)+0.75rem)] md:top-6' : 'bottom-[calc(4.5rem+var(--safe-bottom))] md:bottom-8'}`}>
         <div className="bg-ink-900 text-white rounded-2xl p-4 shadow-card">
           <div className="flex items-center gap-2 mb-2">
             <span className="text-[11px] text-white/60 font-medium whitespace-nowrap">新手教程 {step + 1}/{STEPS.length}</span>
@@ -115,7 +130,7 @@ export default function Tour() {
               跳过 <X size={12} />
             </button>
           </div>
-          <div className="flex gap-3">
+          <div className="flex gap-3 fade-up" key={step}>
             <span className="text-2xl">{s.emoji}</span>
             <div className="min-w-0">
               <div className="text-sm font-semibold">{s.title}</div>
