@@ -11,7 +11,7 @@ import { buildSeedState } from '../data/seed'
 
 const STORAGE_KEY = 'utopia-state-v1'
 // 持久化结构版本:与 localStorage 中的状态不匹配时重建种子数据
-const SCHEMA_VERSION = 5
+const SCHEMA_VERSION = 6
 
 let seq = 1000
 export function genId(prefix: string): string {
@@ -137,7 +137,11 @@ function buildActions(setState: (fn: (s: AppState) => AppState) => void, getStat
   return {
     // ---------- 账号 ----------
     login(userId: string) {
-      mutate(d => { d.currentUserId = userId; d.onboarded = true })
+      mutate(d => {
+        d.currentUserId = userId
+        d.onboarded = true
+        if (!d.tourDone) d.tourStep = 0   // 首次进入自动开始新手教程(可跳过)
+      })
     },
     logout() {
       mutate(d => { d.currentUserId = null })
@@ -169,8 +173,20 @@ function buildActions(setState: (fn: (s: AppState) => AppState) => void, getStat
         u.emergencyContact = p.emergencyContact; u.allowOffline = p.allowOffline; u.maxDistanceKm = p.maxDistanceKm
         d.ledger.push(mkEntry({ from: 'sys:issuer', to: u.id, amount: 50, type: 'signup_bonus', memo: '完善个人资料' }))
         d.onboarded = true
+        if (!d.tourDone) d.tourStep = 0
         notify(d, u.id, '✨', '获得 50 pt', '完善个人资料奖励已到账。完成身份认证还可再获得 100 pt。', '/points')
       })
+    },
+
+    // ---------- 新手教程 ----------
+    startTour() {
+      mutate(d => { d.tourStep = 0 })
+    },
+    setTourStep(n: number) {
+      mutate(d => { d.tourStep = n })
+    },
+    endTour() {
+      mutate(d => { d.tourStep = undefined; d.tourDone = true })
     },
     verifyIdentity() {
       mutate(d => {

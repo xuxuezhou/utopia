@@ -44,6 +44,11 @@ try {
   await clickByText(page, 'button', '陈屿')
   await sleep(800)
   let text = await bodyText(page)
+  const tourShown = text.includes('新手教程')
+  await clickByText(page, 'button', '跳过').catch(() => {})
+  await sleep(400)
+  text = await bodyText(page)
+  ok('新手教程自动出现且可跳过', tourShown && !text.includes('新手教程 1/'))
   ok('登录进入发现页', text.includes('发现') && text.includes('关注'))
 
   // ---------- 路径一:发布低风险任务 ----------
@@ -390,6 +395,26 @@ try {
   await sleep(400)
   text = await bodyText(page)
   ok('会员功能: 订阅页标注权益入口且无规划中', text.includes('高级筛选」') && text.includes('主页装扮') && !text.includes('规划中'))
+
+  // ---------- 新手教程完整走查(从更多菜单重新进入,12 步含 Plus/Pro) ----------
+  await page.goto(`${BASE}/#/`, { waitUntil: 'networkidle0' })
+  await sleep(300)
+  await clickByText(page, 'button', '更多')
+  await sleep(300)
+  await clickByText(page, 'button', '新手教程')
+  await sleep(600)
+  const TOUR_TITLES = ['发现页', '附近互助', '发布求助', '一次完整互助', '积分中心', '圈子', '我的日历', '安全中心', 'Utopia Plus', 'Utopia Pro', '任务加速与推广数据', '管理员后台']
+  let tourOk = true, tourDetail = ''
+  for (let i = 0; i < TOUR_TITLES.length; i++) {
+    const t2 = await bodyText(page)
+    if (!t2.includes(TOUR_TITLES[i]) || !t2.includes(`${i + 1}/${TOUR_TITLES.length}`)) {
+      tourOk = false; tourDetail = `第${i + 1}步未显示「${TOUR_TITLES[i]}」`; break
+    }
+    await clickByText(page, 'button', i === TOUR_TITLES.length - 1 ? '开始使用 Utopia' : '继续')
+    await sleep(500)
+  }
+  const tourGone = !(await bodyText(page)).includes('新手教程 ')
+  ok('新手教程: 12 步完整走查(含 Plus/Pro)并正常结束', tourOk && tourGone, tourDetail)
 
   // ---------- 搜索页只有一个搜索框 ----------
   await page.goto(`${BASE}/#/search`, { waitUntil: 'networkidle0' })

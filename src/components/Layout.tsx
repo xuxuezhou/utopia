@@ -3,6 +3,7 @@ import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router-do
 import { Compass, MapPin, MessageCircle, Plus, User as UserIcon, UsersRound, Search, MoreHorizontal, House } from 'lucide-react'
 import { useStore, useCurrentUser } from '../lib/store'
 import { Avatar, Logo, ToastHost, toast } from './ui'
+import Tour from './Tour'
 
 const sideCls = ({ isActive }: { isActive: boolean }) =>
   `flex items-center gap-3 px-4 py-2.5 rounded-xl text-[15px] transition-colors ${isActive ? 'bg-cream-100 text-ink-900 font-semibold' : 'text-ink-500 hover:bg-cream-50 hover:text-ink-700'}`
@@ -56,6 +57,8 @@ export default function Layout() {
               <Link to="/promo" className="block px-3 py-2 rounded-lg hover:bg-cream-50 text-sm">推广效果</Link>
               <Link to="/org" className="block px-3 py-2 rounded-lg hover:bg-cream-50 text-sm">机构版</Link>
               <Link to="/admin" className="block px-3 py-2 rounded-lg hover:bg-cream-50 text-sm">管理员后台</Link>
+              <button className="block w-full text-left px-3 py-2 rounded-lg hover:bg-cream-50 text-sm cursor-pointer"
+                onClick={() => { actions.startTour(); nav('/') }}>🧭 新手教程</button>
               <div className="border-t border-cream-200 my-1" />
               <button className="block w-full text-left px-3 py-2 rounded-lg hover:bg-cream-50 text-sm text-ink-400 cursor-pointer"
                 onClick={() => { actions.logout(); nav('/welcome') }}>退出登录</button>
@@ -116,6 +119,7 @@ export default function Layout() {
       )}
 
       <PublishSheet open={sheet} onClose={() => setSheet(false)} />
+      <Tour />
       <ToastHost />
     </div>
   )

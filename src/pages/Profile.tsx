@@ -212,11 +212,13 @@ export default function Profile() {
                   恢复默认头像与背景
                 </button>
               )}
-              {[['我的任务', '/mytasks'], ['积分中心', '/points'], ['我的圈子', '/circles'], ['信任与认证', '/trust'], ['安全中心', '/safety'], ['管理员后台', '/admin']].map(([label, to]) => (
+              {[['我的任务', '/mytasks'], ['我的日历', '/calendar'], ['积分中心', '/points'], ['我的圈子', '/circles'], ['信任与认证', '/trust'], ['安全中心', '/safety'], ['会员订阅(Plus / Pro)', '/plus'], ['推广效果', '/promo'], ['管理员后台', '/admin']].map(([label, to]) => (
                 <Link key={to} to={to} className="flex items-center justify-between px-3 py-3 rounded-xl hover:bg-cream-50 text-sm" onClick={() => setMenu(false)}>
                   {label} <ChevronRight size={15} className="text-ink-300" />
                 </Link>
               ))}
+              <button className="w-full text-left px-3 py-3 rounded-xl hover:bg-cream-50 text-sm cursor-pointer"
+                onClick={() => { setMenu(false); actions.startTour(); nav('/') }}>🧭 重新观看新手教程</button>
               <button className="w-full text-left px-3 py-3 rounded-xl hover:bg-cream-50 text-sm text-ink-400 cursor-pointer"
                 onClick={() => { actions.logout(); nav('/welcome') }}>退出登录</button>
             </>

@@ -431,6 +431,9 @@ export interface AppState {
   following: string[]       // 当前用户关注的用户/圈子 id
   feedFilter?: string
   savedTasks?: string[]     // 当前用户收藏的任务
+  // ---- 新手教程 ----
+  tourStep?: number         // 当前教程步骤;undefined 表示未在教程中
+  tourDone?: boolean        // 完成或跳过后不再自动弹出
   // ---- 商业化 ----
   boosts: Boost[]
   cashLedger: CashTx[]      // 现金流水,与积分账本完全隔离
