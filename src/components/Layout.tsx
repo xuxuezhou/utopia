@@ -50,6 +50,11 @@ export default function Layout() {
               <Link to="/points" className="block px-3 py-2 rounded-lg hover:bg-cream-50 text-sm">积分中心</Link>
               <Link to="/trust" className="block px-3 py-2 rounded-lg hover:bg-cream-50 text-sm">信任与认证</Link>
               <Link to="/safety" className="block px-3 py-2 rounded-lg hover:bg-cream-50 text-sm">安全中心</Link>
+              <div className="border-t border-cream-200 my-1" />
+              <Link to="/plus" className="block px-3 py-2 rounded-lg hover:bg-cream-50 text-sm">✦ Utopia Plus</Link>
+              <Link to="/pro" className="block px-3 py-2 rounded-lg hover:bg-cream-50 text-sm">Utopia Pro</Link>
+              <Link to="/promo" className="block px-3 py-2 rounded-lg hover:bg-cream-50 text-sm">推广效果</Link>
+              <Link to="/org" className="block px-3 py-2 rounded-lg hover:bg-cream-50 text-sm">机构版</Link>
               <Link to="/admin" className="block px-3 py-2 rounded-lg hover:bg-cream-50 text-sm">管理员后台</Link>
               <div className="border-t border-cream-200 my-1" />
               <button className="block w-full text-left px-3 py-2 rounded-lg hover:bg-cream-50 text-sm text-ink-400 cursor-pointer"

@@ -3,7 +3,7 @@ import { Link, useNavigate, useParams } from 'react-router-dom'
 import { Settings, ChevronRight, Camera, ImagePlus } from 'lucide-react'
 import { useStore, useCurrentUser } from '../lib/store'
 import { PostCard, TaskCard, TrustPassport } from '../components/cards'
-import { Avatar, Empty, Modal, VerifyDot, pickImage, toast } from '../components/ui'
+import { Avatar, Empty, Modal, PlusBadge, VerifyDot, pickImage, toast } from '../components/ui'
 import { ReportModal } from './TaskDetail'
 
 function hashNum(id: string, mod: number, min: number) {
@@ -81,6 +81,7 @@ export default function Profile() {
           <div className="flex items-center gap-1.5 flex-wrap">
             <h1 className="text-lg font-semibold text-ink-900">{user.name}</h1>
             <VerifyDot level={user.level} />
+            <PlusBadge user={user} withText />
             {user.restricted && <span className="chip bg-coral-50 text-coral-600">⚠ 受限</span>}
           </div>
           <div className="text-xs text-ink-300 mt-0.5">Utopia号:{user.id} · {user.city}</div>
@@ -121,6 +122,23 @@ export default function Profile() {
           </div>
         )}
       </div>
+
+      {/* Utopia Pro 专业主页(专业工具展示,不代表平台背书或更高信任) */}
+      {user.pro?.active && (
+        <div className="mt-4 card p-4 bg-gradient-to-br from-violet-50/60 to-white">
+          <div className="flex items-center gap-2 mb-1.5">
+            <span className="chip bg-violet-100 text-violet-600">💼 Pro</span>
+            <span className="text-sm font-medium">{user.pro.headline}</span>
+          </div>
+          {user.pro.weeklySlots.length > 0 && <div className="text-xs text-ink-500 mt-1">🗓 可约时间:{user.pro.weeklySlots.join(' / ')}</div>}
+          {user.pro.portfolio.length > 0 && (
+            <div className="flex gap-2 mt-2 overflow-x-auto no-scrollbar">
+              {user.pro.portfolio.map(p => <span key={p} className="chip bg-white text-ink-500 border border-cream-200 shrink-0">{p}</span>)}
+            </div>
+          )}
+          <p className="text-[10px] text-ink-300 mt-2">Pro 是专业展示工具,不代表平台认证或更高信任,信任信息以信任护照为准。</p>
+        </div>
+      )}
 
       {/* 我可以帮助(长期卡片) */}
       {user.offerCards.length > 0 && (

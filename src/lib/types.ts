@@ -71,6 +71,11 @@ export interface User {
   maxDistanceKm: number
   blocked: string[]
   restricted?: string     // 平台限制状态说明
+  // ---- 商业化(均与信任/认证无关) ----
+  plus?: PlusState
+  pro?: ProState
+  adPrefs?: AdPrefs
+  boostQuota?: { month: string; freeUsed: number; plusUsed: number }  // 每月配额:所有人 1 次免费,Plus 另有 3 次
 }
 
 export interface Community {
@@ -288,6 +293,110 @@ export interface AuditLog {
   createdAt: string
 }
 
+// ============ 商业化(出售便利与曝光,不出售安全、信任与公平) ============
+
+// Utopia Plus 会员:与身份/社区/技能认证完全无关,只提升使用效率
+export interface PlusState {
+  active: boolean
+  plan: 'monthly' | 'yearly'
+  since: string
+  renewsAt: string
+}
+
+// Utopia Pro:面向高频技能贡献者/社区组织者的专业工具,不能购买好评或信任
+export interface ProState {
+  active: boolean
+  since: string
+  headline: string          // 专业主页标题
+  portfolio: string[]       // 作品集(文字条目演示)
+  weeklySlots: string[]     // 可用时间表
+  autoReply?: string
+}
+
+// 每用户广告与推广偏好
+export interface AdPrefs {
+  reducePromos: boolean         // 减少信息流推广密度
+  hiddenAdCategories: string[]  // 隐藏的广告类目
+  personalized: boolean         // 是否允许基于兴趣标签的本地广告(默认开,可关)
+}
+
+export type BoostPackageId = 'community' | 'nearby' | 'instant' | 'reach' | 'revive'
+
+// 任务加速订单:现金购买有限曝光;现金永远买不到积分
+export interface Boost {
+  id: string
+  taskId: string
+  buyerId: string
+  packageId: BoostPackageId
+  source: 'paid' | 'free_quota' | 'plus_quota' | 'subsidy'
+  priceCny: number          // free/plus/subsidy 为 0
+  createdAt: string
+  expiresAt: string
+  // 推广漏斗数据:自然曝光与推广曝光分开统计
+  stats: { organicViews: number; boostedViews: number; detailVisits: number; qualifiedApplicants: number; matched: boolean }
+}
+
+export type CashTxType =
+  | 'plus_subscribe' | 'pro_subscribe' | 'boost'
+  | 'org_license' | 'sponsorship' | 'verify_service'
+
+export const CASH_TX_LABEL: Record<CashTxType, string> = {
+  plus_subscribe: 'Plus 会员',
+  pro_subscribe: 'Pro 订阅',
+  boost: '任务加速',
+  org_license: '机构版授权',
+  sponsorship: '品牌公益赞助',
+  verify_service: '验证服务(成本价)',
+}
+
+// 现金流水:与积分账本完全隔离,不存在互相兑换的通道
+export interface CashTx {
+  id: string
+  type: CashTxType
+  userId?: string
+  orgName?: string
+  amountCny: number
+  memo: string
+  createdAt: string
+}
+
+// 本地情境广告(球场/咖啡馆/宠物店等),必须标注,不进入聊天/任务执行/安全中心
+export interface Ad {
+  id: string
+  advertiser: string
+  title: string
+  body: string
+  category: string          // 本地类目:运动场地/社区咖啡/宠物/课程/社区服务
+  emoji: string
+  hue: number
+}
+
+// 机构版客户(B2B2C:机构付费,成员免费)
+export interface Institution {
+  id: string
+  name: string
+  type: 'university' | 'apartment' | 'company' | 'coworking' | 'senior' | 'nonprofit' | 'org'
+  emoji: string
+  plan: string
+  seats: number
+  annualCny: number
+  communityId?: string
+  sso: boolean
+  since: string
+}
+
+// 品牌公益赞助:必须明确显示赞助方
+export interface Sponsorship {
+  id: string
+  brand: string
+  campaign: string
+  kind: string              // 公园清洁/长者数字课堂/新居民支持…
+  amountCny: number
+  communityId?: string
+  taskIds: string[]
+  since: string
+}
+
 export interface AppState {
   schemaVersion?: number    // 持久化结构版本,不匹配时重建种子数据
   currentUserId: string | null
@@ -306,4 +415,10 @@ export interface AppState {
   following: string[]       // 当前用户关注的用户/圈子 id
   feedFilter?: string
   savedTasks?: string[]     // 当前用户收藏的任务
+  // ---- 商业化 ----
+  boosts: Boost[]
+  cashLedger: CashTx[]      // 现金流水,与积分账本完全隔离
+  ads: Ad[]
+  institutions: Institution[]
+  sponsorships: Sponsorship[]
 }

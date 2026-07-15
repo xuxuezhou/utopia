@@ -27,6 +27,7 @@ export default function MyTasks() {
           <p className="text-xs text-ink-400">进行中的互助、发布的请求和帮助记录都在这里</p>
         </div>
         <div className="flex-1" />
+        <Link to="/promo" className="btn-outline hidden sm:inline-flex">推广效果</Link>
         <Link to="/publish" className="btn-primary hidden sm:inline-flex">＋ 发布帮助</Link>
       </div>
 

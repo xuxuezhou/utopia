@@ -18,6 +18,11 @@ import Circles, { CircleDetail } from './pages/Circles'
 import SearchPage from './pages/SearchPage'
 import Safety from './pages/Safety'
 import Admin from './pages/Admin'
+import Plus from './pages/Plus'
+import Boost from './pages/Boost'
+import Promo from './pages/Promo'
+import Org from './pages/Org'
+import Pro from './pages/Pro'
 
 function Guard({ children }: { children: React.ReactNode }) {
   const { state } = useStore()
@@ -47,6 +52,11 @@ function App() {
           <Route path="/circles" element={<Circles />} />
           <Route path="/circle/:id" element={<CircleDetail />} />
           <Route path="/safety" element={<Safety />} />
+          <Route path="/plus" element={<Plus />} />
+          <Route path="/boost/:taskId" element={<Boost />} />
+          <Route path="/promo" element={<Promo />} />
+          <Route path="/org" element={<Org />} />
+          <Route path="/pro" element={<Pro />} />
           <Route path="/admin" element={<Admin />} />
           <Route path="/admin/:section" element={<Admin />} />
         </Route>

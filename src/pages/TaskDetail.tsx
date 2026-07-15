@@ -1,9 +1,10 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { ArrowLeft, Calendar, Star, MapPin, Share2, Sparkles, Users, CircleCheck, MessageCircle } from 'lucide-react'
-import { useStore, useCurrentUser } from '../lib/store'
+import { useStore, useCurrentUser, nowISO } from '../lib/store'
 import { TrustPassport, UserRow } from '../components/cards'
-import { Avatar, Empty, Modal, StatusBadge, TierBadge, VerifyDot, fmtDate, fmtTime, toast } from '../components/ui'
+import { Avatar, Empty, Modal, PromoTag, StatusBadge, TierBadge, VerifyDot, fmtDate, fmtTime, toast } from '../components/ui'
+import { activeBoost, boostEligibility, BOOST_PACKAGES } from '../lib/monetize'
 import { CATEGORY_META, type Review, type Task } from '../lib/types'
 
 export default function TaskDetail() {
@@ -113,6 +114,9 @@ export default function TaskDetail() {
         {!task.online && <p className="text-[11px] text-ink-300 pt-1 border-t border-cream-300">仅显示大致位置,精确地点在匹配后按需告知 · {task.cancelPolicy}</p>}
         {task.riskTier !== 'T0' && task.riskTier !== 'T1' && <div className="pt-0.5"><TierBadge tier={task.riskTier} /></div>}
       </div>
+
+      {/* 推广标注与发布者加速入口 */}
+      <TaskBoostRow task={task} isPublisher={isPublisher} />
 
       {/* 申请者预览 / 发布者的申请管理 */}
       {['open', 'applied'].includes(task.status) && !isPublisher && pendingApps.length > 0 && (
@@ -267,6 +271,37 @@ export default function TaskDetail() {
         {publisher && <TrustPassport user={publisher} compact />}
         <p className="text-[11px] text-ink-300 mt-4">为保护隐私,身份证件、精确地址、积分余额与位置历史不会向其他用户公开。</p>
       </Modal>
+    </div>
+  )
+}
+
+// ============ 推广标注 + 发布者加速入口 ============
+// 任何生效中的加速对所有用户可见地标注;发布者可见数据与购买入口
+function TaskBoostRow({ task, isPublisher }: { task: Task; isPublisher: boolean }) {
+  const { state } = useStore()
+  const me = useCurrentUser()!
+  const boost = activeBoost(state, task.id, nowISO())
+  const pkg = boost && BOOST_PACKAGES.find(p => p.id === boost.packageId)
+  const canBoost = isPublisher && ['open', 'applied'].includes(task.status) && boostEligibility(state, task, me).ok
+
+  if (boost) {
+    return (
+      <div className="mt-3 flex items-center gap-2 flex-wrap text-xs text-ink-400">
+        <PromoTag text="任务加速" />
+        <span>该任务使用了{pkg?.label}{boost.source === 'subsidy' ? '(平台公益补贴)' : ''} · 只扩大合格曝光,不影响匹配与申请规则</span>
+        {isPublisher && (
+          <Link to="/promo" className="text-violet-600">
+            推广数据:自然曝光 {boost.stats.organicViews} · 推广曝光 {boost.stats.boostedViews} · 合格申请 {boost.stats.qualifiedApplicants} →
+          </Link>
+        )}
+      </div>
+    )
+  }
+  if (!canBoost) return null
+  return (
+    <div className="mt-3 flex items-center justify-between bg-cream-50 rounded-xl px-4 py-3">
+      <span className="text-sm text-ink-500">🚀 想让更多合适的人看到?</span>
+      <Link to={`/boost/${task.id}`} className="btn-outline !py-1.5 !text-xs shrink-0">任务加速</Link>
     </div>
   )
 }

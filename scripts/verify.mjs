@@ -226,6 +226,82 @@ try {
     ok(`页面渲染 ${path}`, t2.includes(expect))
   }
 
+  // ---------- 商业化:页面渲染 ----------
+  for (const [path, expect] of [
+    ['/#/plus', 'Plus 不会带来的东西'], ['/#/pro', 'Pro 不能做的事'],
+    ['/#/org', '机构付费'], ['/#/promo', '基础曝光'], ['/#/admin/monetize', '商业化红线'],
+  ]) {
+    await page.goto(`${BASE}${path}`, { waitUntil: 'networkidle0' })
+    await sleep(300)
+    const t2 = await bodyText(page)
+    ok(`商业化页面渲染 ${path}`, t2.includes(expect))
+  }
+
+  // ---------- 商业化:发现流推广位明确标注(当前用户非 Plus,应看到广告) ----------
+  await page.goto(`${BASE}/#/`, { waitUntil: 'networkidle0' })
+  await sleep(700)
+  const promoMarks = await page.evaluate(() => {
+    const chips = [...document.querySelectorAll('span')].map(s => s.textContent?.trim())
+    return { promo: chips.includes('推广'), ad: chips.includes('广告') }
+  })
+  ok('商业化: 信息流推广位与广告均明确标注', promoMarks.promo && promoMarks.ad, JSON.stringify(promoMarks))
+
+  // ---------- 商业化:非发布者不能购买加速 ----------
+  await page.goto(`${BASE}/#/boost/t3`, { waitUntil: 'networkidle0' })
+  await sleep(400)
+  text = await bodyText(page)
+  ok('商业化: 非发布者被拒绝购买加速', text.includes('只有发布者本人'))
+
+  // ---------- 商业化:免费额度加速自己的任务,且不产生任何积分账目 ----------
+  const before = await page.evaluate(() => {
+    const s = JSON.parse(localStorage.getItem('utopia-state-v1'))
+    return { ledger: s.ledger.length, cash: s.cashLedger.length, boosts: s.boosts.length }
+  })
+  await page.goto(`${BASE}/#/boost/t5`, { waitUntil: 'networkidle0' })
+  await sleep(500)
+  await clickByText(page, 'button', '社区加速')
+  await sleep(300)
+  await clickByText(page, 'button', '选择「社区加速」')
+  await sleep(400)
+  await clickByText(page, 'button', '使用本月免费额度')
+  await sleep(700)
+  const afterFree = await page.evaluate(() => {
+    const s = JSON.parse(localStorage.getItem('utopia-state-v1'))
+    const b = s.boosts.find(x => x.taskId === 't5')
+    return { ledger: s.ledger.length, cash: s.cashLedger.length, boosts: s.boosts.length, source: b?.source }
+  })
+  ok('商业化: 免费额度加速生效', afterFree.boosts === before.boosts + 1 && afterFree.source === 'free_quota')
+  ok('商业化: 加速不产生积分账目、免费额度不产生现金流水',
+    afterFree.ledger === before.ledger && afterFree.cash === before.cash,
+    `ledger ${before.ledger}→${afterFree.ledger} cash ${before.cash}→${afterFree.cash}`)
+  text = await bodyText(page)
+  ok('商业化: 任务详情标注「任务加速」', text.includes('任务加速') && text.includes('不影响匹配'))
+
+  // ---------- 商业化:订阅 Plus 用现金,积分账本零变化 ----------
+  await page.goto(`${BASE}/#/plus`, { waitUntil: 'networkidle0' })
+  await sleep(400)
+  await clickByText(page, 'button', '开通 Utopia Plus')
+  await sleep(400)
+  await clickByText(page, 'button', '确认支付')
+  await sleep(600)
+  const afterPlus = await page.evaluate(() => {
+    const s = JSON.parse(localStorage.getItem('utopia-state-v1'))
+    const me = s.users.find(u => u.id === s.currentUserId)
+    return { active: !!me.plus?.active, ledger: s.ledger.length, cash: s.cashLedger.length }
+  })
+  ok('商业化: Plus 订阅成功且现金/积分严格分离',
+    afterPlus.active && afterPlus.ledger === afterFree.ledger && afterPlus.cash === afterFree.cash + 1,
+    `ledger 不变=${afterPlus.ledger === afterFree.ledger} cash +1=${afterPlus.cash === afterFree.cash + 1}`)
+
+  // Plus 用户信息流应几乎无广告(推广任务仍标注)
+  await page.goto(`${BASE}/#/`, { waitUntil: 'networkidle0' })
+  await sleep(700)
+  const plusFeed = await page.evaluate(() => {
+    const chips = [...document.querySelectorAll('span')].map(s => s.textContent?.trim())
+    return { ad: chips.includes('广告') }
+  })
+  ok('商业化: Plus 会员信息流无广告', !plusFeed.ad)
+
   // 截图
   await page.goto(`${BASE}/#/`, { waitUntil: 'networkidle0' }); await sleep(600)
   await page.screenshot({ path: 'scripts/shot-feed.png' })

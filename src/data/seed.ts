@@ -2,9 +2,9 @@
 // 纯数据文件:所有时间均为字面量,不使用 Date.now()
 
 import type {
-  AppState, AuditLog, ChatMessage, ChatThread, Community, ContentPost,
-  Dispute, LedgerEntry, LedgerType, Notification, Report, Review,
-  SafetyIncident, Task, TaskApplication, User,
+  AppState, Ad, AuditLog, Boost, CashTx, ChatMessage, ChatThread, Community, ContentPost,
+  Dispute, Institution, LedgerEntry, LedgerType, Notification, Report, Review,
+  SafetyIncident, Sponsorship, Task, TaskApplication, User,
 } from '../lib/types'
 
 // ---------- 小工具(减少重复) ----------
@@ -1478,6 +1478,85 @@ export function buildSeedState(): AppState {
     },
   ]
 
+  // ---------- 商业化种子数据 ----------
+  // 原则:现金只买便利与曝光;积分账本没有任何一条来自现金
+
+  // Plus 会员(与认证等级完全无关:注意 u16 是 L1,u2 是 L3,均可购买)
+  const mkPlus = (id: string, plan: 'monthly' | 'yearly', since: string, renewsAt: string) => {
+    const u = users.find(x => x.id === id)!
+    u.plus = { active: true, plan, since, renewsAt }
+  }
+  mkPlus('u2', 'yearly', '2026-03-02T10:00:00', '2027-03-02')
+  mkPlus('u5', 'monthly', '2026-06-20T09:00:00', '2026-07-20')
+  mkPlus('u7', 'monthly', '2026-07-01T18:30:00', '2026-08-01')
+  mkPlus('u16', 'yearly', '2026-05-11T12:00:00', '2027-05-11')
+
+  // Pro 用户:摄影师苏晚晴(专业工具,不改变信任与评价)
+  users.find(x => x.id === 'u2')!.pro = {
+    active: true, since: '2026-04-15T10:00:00',
+    headline: '人像与活动摄影 · 求职照/毕业照/社区活动记录',
+    portfolio: ['求职形象照 40+ 组', '湖畔大学毕业季跟拍 12 场', '梧桐街区市集活动记录'],
+    weeklySlots: ['周三晚 19:00-21:00', '周六全天', '周日上午'],
+    autoReply: '你好!我一般 2 小时内回复。拍摄前会先沟通场景和用途,放心留言~',
+  }
+
+  // 任务加速:两笔付费 + 一笔公益补贴;漏斗数据区分自然/推广曝光
+  const boosts: Boost[] = [
+    {
+      id: 'b1', taskId: 't2', buyerId: 'u16', packageId: 'nearby', source: 'paid', priceCny: 9,
+      createdAt: '2026-07-12T20:00:00', expiresAt: '2026-12-31T23:59:00',
+      stats: { organicViews: 86, boostedViews: 132, detailVisits: 41, qualifiedApplicants: 3, matched: false },
+    },
+    {
+      id: 'b2', taskId: 't12', buyerId: 'u7', packageId: 'instant', source: 'paid', priceCny: 12,
+      createdAt: '2026-07-13T09:30:00', expiresAt: '2026-12-31T23:59:00',
+      stats: { organicViews: 64, boostedViews: 95, detailVisits: 28, qualifiedApplicants: 2, matched: false },
+    },
+    {
+      id: 'b3', taskId: 't8', buyerId: 'u2', packageId: 'community', source: 'subsidy', priceCny: 0,
+      createdAt: '2026-07-11T08:00:00', expiresAt: '2026-12-31T23:59:00',
+      stats: { organicViews: 120, boostedViews: 210, detailVisits: 66, qualifiedApplicants: 5, matched: false },
+    },
+  ]
+
+  // 本地情境广告(只在信息流按密度出现,明确标注,不进入聊天/任务执行/安全中心)
+  const ads: Ad[] = [
+    { id: 'ad1', advertiser: '城南网球中心', title: '夜场灯光球场 5 折体验', body: '工作日 20 点后场地五折,新用户送一次教练陪打 30 分钟。', category: '运动场地', emoji: '🎾', hue: 140 },
+    { id: 'ad2', advertiser: '梧桐街角咖啡', title: '互助伙伴同行,第二杯半价', body: '凭 Utopia 任务聊天记录到店,两人同行第二杯半价。', category: '社区咖啡', emoji: '☕', hue: 40 },
+    { id: 'ad3', advertiser: '毛孩子宠物生活馆', title: '猫咪寄养体验日', body: '本周末开放参观,寄养 3 天送洗护一次。', category: '宠物服务', emoji: '🐾', hue: 20 },
+    { id: 'ad4', advertiser: '滨江青年夜校', title: '秋季吉他/摄影/口语班报名', body: '社区居民专属价,小班教学,零基础友好。', category: '本地课程', emoji: '🎸', hue: 260 },
+  ]
+
+  // 机构版客户(B2B2C:机构付费,成员免费使用)
+  const institutions: Institution[] = [
+    { id: 'org1', name: '湖畔大学', type: 'university', emoji: '🎓', plan: '校园版', seats: 12000, annualCny: 98000, communityId: 'c1', sso: true, since: '2026-02-01' },
+    { id: 'org2', name: '青藤公寓', type: 'apartment', emoji: '🏠', plan: '社区版', seats: 800, annualCny: 19800, communityId: 'c2', sso: false, since: '2026-04-15' },
+    { id: 'org3', name: '银发数字课堂', type: 'nonprofit', emoji: '🧓', plan: '公益版(非营利五折)', seats: 300, annualCny: 4800, communityId: 'c6', sso: false, since: '2026-05-20' },
+  ]
+
+  // 品牌公益赞助:必须明确显示赞助方,不能把普通广告伪装成公益
+  const sponsorships: Sponsorship[] = [
+    { id: 'sp1', brand: '绿洲环保科技', campaign: '梧桐公园夏季清洁月', kind: '公园清洁', amountCny: 8000, communityId: 'c3', taskIds: ['t8'], since: '2026-07-01' },
+    { id: 'sp2', brand: '滨江邻里生活超市', campaign: '长者数字生活支持计划', kind: '老年数字技能帮助', amountCny: 12000, communityId: 'c6', taskIds: ['t7', 't26'], since: '2026-06-01' },
+  ]
+
+  // 现金流水:与积分账本完全隔离(演示支付)
+  const cashLedger: CashTx[] = [
+    { id: 'cx1', type: 'org_license', orgName: '湖畔大学', amountCny: 98000, memo: '校园版年度授权 · 12000 席位 · 含 SSO', createdAt: '2026-02-01T10:00:00' },
+    { id: 'cx2', type: 'org_license', orgName: '青藤公寓', amountCny: 19800, memo: '社区版年度授权 · 800 席位', createdAt: '2026-04-15T14:00:00' },
+    { id: 'cx3', type: 'org_license', orgName: '银发数字课堂', amountCny: 4800, memo: '公益版年度授权(非营利五折)', createdAt: '2026-05-20T09:00:00' },
+    { id: 'cx4', type: 'sponsorship', orgName: '绿洲环保科技', amountCny: 8000, memo: '公益赞助:梧桐公园夏季清洁月', createdAt: '2026-07-01T11:00:00' },
+    { id: 'cx5', type: 'sponsorship', orgName: '滨江邻里生活超市', amountCny: 12000, memo: '公益赞助:长者数字生活支持计划', createdAt: '2026-06-01T10:00:00' },
+    { id: 'cx6', type: 'plus_subscribe', userId: 'u2', amountCny: 118, memo: 'Utopia Plus 年付', createdAt: '2026-03-02T10:00:00' },
+    { id: 'cx7', type: 'plus_subscribe', userId: 'u5', amountCny: 15, memo: 'Utopia Plus 月付', createdAt: '2026-06-20T09:00:00' },
+    { id: 'cx8', type: 'plus_subscribe', userId: 'u7', amountCny: 15, memo: 'Utopia Plus 月付', createdAt: '2026-07-01T18:30:00' },
+    { id: 'cx9', type: 'plus_subscribe', userId: 'u16', amountCny: 118, memo: 'Utopia Plus 年付', createdAt: '2026-05-11T12:00:00' },
+    { id: 'cx10', type: 'pro_subscribe', userId: 'u2', amountCny: 25, memo: 'Utopia Pro 月付', createdAt: '2026-07-01T10:00:00' },
+    { id: 'cx11', type: 'boost', userId: 'u16', amountCny: 9, memo: '附近加速 ·「周日下午找网球搭档」', createdAt: '2026-07-12T20:00:00' },
+    { id: 'cx12', type: 'boost', userId: 'u7', amountCny: 12, memo: '即时加速 ·「帮我看看简历和自我介绍」', createdAt: '2026-07-13T09:30:00' },
+    { id: 'cx13', type: 'verify_service', userId: 'u2', amountCny: 29, memo: '专业执照验证(摄影职业资格,成本价)', createdAt: '2026-04-16T10:00:00' },
+  ]
+
   // ---------- 汇总 ----------
   return {
     currentUserId: null,
@@ -1495,5 +1574,10 @@ export function buildSeedState(): AppState {
     auditLogs,
     following: ['u2', 'u5', 'c1'],
     feedFilter: undefined,
+    boosts,
+    cashLedger,
+    ads,
+    institutions,
+    sponsorships,
   }
 }

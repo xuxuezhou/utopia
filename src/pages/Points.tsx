@@ -59,6 +59,7 @@ export default function Points() {
 
       <div className="card p-3 mb-4 text-[11px] text-ink-300 leading-relaxed">
         ⓘ 积分只能在 Utopia 内使用:不能提现、不能购买、不能兑换现金或加密货币、不能自由转账、不产生利息,也不与任何法定货币固定挂钩。
+        现金与积分严格分离 —— 现金只能购买 <Link to="/plus" className="text-violet-500">Plus 会员</Link>、<Link to="/promo" className="text-violet-500">任务加速</Link> 等平台工具,永远买不到积分;积分只在用户之间的互助中流动。
       </div>
 
       {/* 账本 */}

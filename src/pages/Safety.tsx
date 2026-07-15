@@ -127,6 +127,35 @@ export default function Safety() {
         </div>
       </div>
 
+      {/* 广告与推广偏好 */}
+      <div className="card p-5">
+        <h3 className="font-semibold mb-1">广告与推广偏好</h3>
+        <p className="text-xs text-ink-400 mb-4 leading-relaxed">
+          Utopia 只投放明确标注的本地情境广告,绝不使用你的私聊内容、精确住址、实时位置、医疗心理状态或任务困难做广告定向;聊天、任务执行和安全中心永远没有广告。
+        </p>
+        <div className="space-y-3">
+          <label className="flex items-center justify-between cursor-pointer">
+            <span className="text-sm text-ink-700">减少信息流中的推广内容</span>
+            <input type="checkbox" className="accent-coral-500 w-4 h-4" checked={me.adPrefs?.reducePromos ?? false}
+              onChange={e => actions.updateAdPrefs({ reducePromos: e.target.checked })} />
+          </label>
+          <label className="flex items-center justify-between cursor-pointer">
+            <span className="text-sm text-ink-700">允许基于兴趣标签的本地广告</span>
+            <input type="checkbox" className="accent-coral-500 w-4 h-4" checked={me.adPrefs?.personalized ?? true}
+              onChange={e => actions.updateAdPrefs({ personalized: e.target.checked })} />
+          </label>
+          {(me.adPrefs?.hiddenAdCategories?.length ?? 0) > 0 && (
+            <div className="text-xs text-ink-400">
+              已隐藏的广告类目:{me.adPrefs!.hiddenAdCategories.join('、')}
+              <button className="text-violet-600 ml-2 cursor-pointer" onClick={() => actions.updateAdPrefs({ hiddenAdCategories: [] })}>恢复</button>
+            </div>
+          )}
+          <p className="text-[11px] text-ink-300">
+            <Link to="/plus" className="text-violet-600">Plus 会员</Link>几乎不看到广告 —— 但我们不会为了卖会员而故意增加免费版的广告。
+          </p>
+        </div>
+      </div>
+
       {/* 隐私与设备 */}
       <div className="card p-5">
         <h3 className="font-semibold mb-3">隐私与账号</h3>

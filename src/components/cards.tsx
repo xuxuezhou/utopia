@@ -1,11 +1,12 @@
 import { Link, useNavigate } from 'react-router-dom'
-import { Heart } from 'lucide-react'
-import type { Task, ContentPost, User } from '../lib/types'
+import { Heart, X } from 'lucide-react'
+import type { Task, ContentPost, User, Ad } from '../lib/types'
 import { useStore } from '../lib/store'
-import { Avatar, Cover, LevelBadge, Points, VerifyDot, fmtDate, fmtTime } from './ui'
+import { Avatar, Cover, LevelBadge, Points, PlusBadge, PromoTag, VerifyDot, fmtDate, fmtTime, toast } from './ui'
 
 // ============ 任务卡(小红书式:封面 / 两行标题 / 作者行+积分 / 灰色元信息) ============
-export function TaskCard({ task }: { task: Task }) {
+// promoted:该任务处于付费/补贴加速中 —— 必须明确标注,不得伪装成自然推荐
+export function TaskCard({ task, promoted = false }: { task: Task; promoted?: boolean }) {
   const { state } = useStore()
   const nav = useNavigate()
   const publisher = state.users.find(u => u.id === task.publisherId)
@@ -21,6 +22,7 @@ export function TaskCard({ task }: { task: Task }) {
             {{ matched: '已匹配', starting_soon: '即将开始', in_progress: '进行中', pending_confirm: '待确认', completed: '已完成', cancelled: '已取消', disputed: '争议中', blocked: '已下架' }[task.status as string]}
           </span>
         )}
+        {promoted && <span className="absolute left-2 bottom-2 chip bg-white/90 text-ink-400 backdrop-blur !px-1.5 !py-0 !text-[10px]">推广</span>}
       </Cover>
       <div className="pt-2 px-0.5">
         <h3 className="text-[14px] leading-[1.35] font-medium text-ink-900 line-clamp-2">{task.title}</h3>
@@ -28,6 +30,7 @@ export function TaskCard({ task }: { task: Task }) {
           <Avatar user={publisher} size={20} link={false} />
           <span className="text-xs text-ink-500 truncate">{publisher?.name}</span>
           {publisher && <VerifyDot level={publisher.level} />}
+          <PlusBadge user={publisher} />
           <span className="flex-1" />
           <Points value={task.points} size="sm" />
         </div>
@@ -36,6 +39,29 @@ export function TaskCard({ task }: { task: Task }) {
           {fmtDate(task.date, task.startTime)}
           {applying > 0 && ` · ${applying}人想帮`}
         </div>
+      </div>
+    </div>
+  )
+}
+
+// ============ 本地广告卡:明确标注「广告」,可一键减少此类内容 ============
+export function AdCard({ ad }: { ad: Ad }) {
+  const { actions } = useStore()
+  return (
+    <div className="fade-up">
+      <div className="relative w-full overflow-hidden rounded-xl" style={{ aspectRatio: '4/5', background: `linear-gradient(160deg, oklch(0.97 0.02 ${ad.hue}), oklch(0.92 0.05 ${(ad.hue + 30) % 360}))` }}>
+        <div className="absolute inset-0 flex items-center justify-center text-5xl">{ad.emoji}</div>
+        <span className="absolute left-2 top-2"><PromoTag text="广告" /></span>
+        <button
+          className="absolute right-1.5 top-1.5 w-6 h-6 rounded-full bg-white/70 text-ink-400 flex items-center justify-center cursor-pointer"
+          aria-label="减少此类广告"
+          onClick={e => { e.stopPropagation(); actions.hideAdCategory(ad.category); toast(`已减少「${ad.category}」类广告`) }}
+        ><X size={13} strokeWidth={2} /></button>
+      </div>
+      <div className="pt-2 px-0.5">
+        <h3 className="text-[14px] leading-[1.35] font-medium text-ink-900 line-clamp-2">{ad.title}</h3>
+        <p className="text-xs text-ink-400 mt-1 line-clamp-2">{ad.body}</p>
+        <div className="text-xs text-ink-300 mt-1.5">{ad.advertiser} · {ad.category}</div>
       </div>
     </div>
   )
@@ -58,6 +84,7 @@ export function PostCard({ post }: { post: ContentPost }) {
           <Avatar user={author} size={20} link={false} />
           <span className="text-xs text-ink-500 truncate">{author?.name}</span>
           {author && <VerifyDot level={author.level} />}
+          <PlusBadge user={author} />
           <span className="flex-1" />
           <button
             className={`flex items-center gap-1 text-xs cursor-pointer ${post.likedByMe ? 'text-coral-500' : 'text-ink-400'}`}
@@ -123,6 +150,7 @@ export function UserRow({ user, extra, onClick }: { user: User; extra?: React.Re
         <div className="flex items-center gap-1.5">
           <span className="font-medium text-sm">{user.name}</span>
           <VerifyDot level={user.level} />
+          <PlusBadge user={user} />
         </div>
         <div className="text-xs text-ink-400 truncate">{user.bio}</div>
       </div>

@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { useStore, poolBalance, availablePoints } from '../lib/store'
-import { LEDGER_TYPE_LABEL, type Task } from '../lib/types'
+import { CASH_TX_LABEL, LEDGER_TYPE_LABEL, type CashTx, type Task } from '../lib/types'
 import { Avatar, LevelBadge, Modal, Stat, StatusBadge, TierBadge } from '../components/ui'
 
 const SECTIONS = [
@@ -13,6 +13,7 @@ const SECTIONS = [
   { key: 'disputes', label: '争议处理', icon: '⚖️' },
   { key: 'ledger', label: '积分账本', icon: '📒' },
   { key: 'economy', label: '积分经济', icon: '💠' },
+  { key: 'monetize', label: '商业化', icon: '💳' },
   { key: 'audit', label: '审计日志', icon: '🧾' },
 ]
 
@@ -42,6 +43,7 @@ export default function Admin() {
         {section === 'disputes' && <Disputes />}
         {section === 'ledger' && <Ledger />}
         {section === 'economy' && <Economy />}
+        {section === 'monetize' && <Monetize />}
         {section === 'audit' && <Audit />}
       </div>
     </div>
@@ -432,6 +434,126 @@ function Economy() {
       </div>
       <div className="card p-4 text-xs text-ink-400 leading-relaxed">
         服务积分在任务完成时三路拆分:约 40% 销毁(供应调节)、30% 进入社区关怀池、30% 进入安全补偿池。系统费用不是现金收入,而是积分供应调节机制。
+      </div>
+    </div>
+  )
+}
+
+function Monetize() {
+  const { state } = useStore()
+  const sum = (f: (t: CashTx) => boolean) => state.cashLedger.filter(f).reduce((a, c) => a + c.amountCny, 0)
+  const total = sum(() => true)
+  const orgRev = sum(c => c.type === 'org_license')
+  const subRev = sum(c => c.type === 'plus_subscribe' || c.type === 'pro_subscribe')
+  const boostRev = sum(c => c.type === 'boost')
+  const sponsorRev = sum(c => c.type === 'sponsorship')
+  const plusCount = state.users.filter(u => u.plus?.active).length
+  const proCount = state.users.filter(u => u.pro?.active).length
+  const srcLabel: Record<string, string> = { paid: '付费', free_quota: '免费额度', plus_quota: 'Plus 额度', subsidy: '平台补贴' }
+
+  return (
+    <div className="space-y-4">
+      <h2 className="font-semibold">商业化</h2>
+      <div className="card p-3.5 text-xs text-ink-400 leading-relaxed">
+        原则:出售便利、效率和额外曝光;不出售安全、信任、公平和基础可见性。现金与积分严格分离,本页所有金额均为现金(演示),与积分账本零交集。
+      </div>
+
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+        <Stat label="累计现金收入" value={`¥${total.toLocaleString()}`} tone="coral" />
+        <Stat label="机构版" value={`¥${orgRev.toLocaleString()}`} sub={`${state.institutions.length} 家机构`} />
+        <Stat label="会员订阅" value={`¥${subRev.toLocaleString()}`} sub={`Plus ${plusCount} · Pro ${proCount}`} />
+        <Stat label="任务加速" value={`¥${boostRev.toLocaleString()}`} sub={`${state.boosts.length} 笔(含免费/补贴)`} />
+        <Stat label="公益赞助" value={`¥${sponsorRev.toLocaleString()}`} sub={`${state.sponsorships.length} 个品牌活动`} tone="leaf" />
+        <Stat label="广告库存" value={state.ads.length} sub="本地情境广告" />
+        <Stat label="推广密度上限" value="1/14" sub="每14张内容≤1个推广位" />
+        <Stat label="现金→积分通道" value="0" sub="不存在,永远为零" tone="leaf" />
+      </div>
+
+      <div>
+        <h3 className="font-semibold text-sm mb-2">推广订单</h3>
+        <div className="card divide-y divide-cream-200">
+          {state.boosts.map(b => {
+            const t = state.tasks.find(x => x.id === b.taskId)
+            const u = state.users.find(x => x.id === b.buyerId)
+            return (
+              <div key={b.id} className="p-3.5 flex items-center gap-3 text-sm">
+                <div className="flex-1 min-w-0">
+                  <Link to={`/task/${b.taskId}`} className="font-medium">{t?.title}</Link>
+                  <div className="text-xs text-ink-400 mt-0.5">
+                    {u?.name} · {srcLabel[b.source]} · 自然 {b.stats.organicViews} / 推广 {b.stats.boostedViews} / 合格申请 {b.stats.qualifiedApplicants}
+                  </div>
+                </div>
+                <span className="font-semibold shrink-0">{b.priceCny > 0 ? `¥${b.priceCny}` : '¥0'}</span>
+              </div>
+            )
+          })}
+        </div>
+      </div>
+
+      <div className="grid lg:grid-cols-2 gap-4">
+        <div>
+          <h3 className="font-semibold text-sm mb-2">机构客户</h3>
+          <div className="card divide-y divide-cream-200">
+            {state.institutions.map(o => (
+              <div key={o.id} className="p-3.5 flex items-center gap-2.5 text-sm">
+                <span className="text-lg">{o.emoji}</span>
+                <div className="flex-1 min-w-0">
+                  <div className="font-medium">{o.name}</div>
+                  <div className="text-xs text-ink-400">{o.plan} · {o.seats.toLocaleString()} 席位{o.sso ? ' · SSO' : ''}</div>
+                </div>
+                <span className="text-xs font-semibold shrink-0">¥{o.annualCny.toLocaleString()}/年</span>
+              </div>
+            ))}
+          </div>
+        </div>
+        <div>
+          <h3 className="font-semibold text-sm mb-2">品牌公益赞助</h3>
+          <div className="card divide-y divide-cream-200">
+            {state.sponsorships.map(s => (
+              <div key={s.id} className="p-3.5 text-sm">
+                <div className="font-medium">{s.campaign}</div>
+                <div className="text-xs text-ink-400 mt-0.5">{s.brand} · {s.kind} · ¥{s.amountCny.toLocaleString()} · 明确展示赞助方</div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      <div>
+        <h3 className="font-semibold text-sm mb-2">现金流水(与积分账本完全隔离)</h3>
+        <div className="card overflow-x-auto">
+          <table className="w-full text-xs">
+            <thead>
+              <tr className="text-left text-ink-400 border-b border-cream-200">
+                <th className="p-3">类型</th><th className="p-3">主体</th><th className="p-3 text-right">金额</th><th className="p-3">时间</th><th className="p-3">备注</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-cream-200">
+              {state.cashLedger.map(c => (
+                <tr key={c.id} className="hover:bg-cream-50">
+                  <td className="p-3">{CASH_TX_LABEL[c.type]}</td>
+                  <td className="p-3">{c.orgName ?? state.users.find(u => u.id === c.userId)?.name ?? '—'}</td>
+                  <td className="p-3 text-right font-medium">¥{c.amountCny.toLocaleString()}</td>
+                  <td className="p-3 whitespace-nowrap">{c.createdAt.slice(0, 10)}</td>
+                  <td className="p-3 max-w-56 truncate" title={c.memo}>{c.memo}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div className="card p-4">
+        <h3 className="font-semibold text-sm mb-2">商业化红线(产品硬约束)</h3>
+        <ul className="text-xs text-ink-500 space-y-1.5 leading-relaxed">
+          <li>🚫 现金不能购买、兑换或提现积分;积分只在互助中流动</li>
+          <li>🚫 会员/推广不改变信任分、评价权重、匹配算法与任何安全权限</li>
+          <li>🚫 敏感任务(儿童/医疗/驾驶/身体接触/私人住宅/金融/法律/异常高积分/被举报)不得付费推广</li>
+          <li>🚫 无开屏广告、强制插屏;聊天、任务执行、安全中心永远无广告</li>
+          <li>🚫 广告定向不使用:私聊内容、精确住址、实时位置、儿童信息、医疗心理状态、用户困难、敏感任务描述</li>
+          <li>✅ 所有推广内容明确标注「推广/任务加速/赞助展示」;公益与困难任务享有免费/补贴加速</li>
+          <li>✅ 每位用户每月 1 次免费加速;所有免费任务保有基础曝光与至少一次匹配推荐</li>
+        </ul>
       </div>
     </div>
   )

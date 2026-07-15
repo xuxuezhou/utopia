@@ -3,13 +3,15 @@ import { createContext, useContext, useEffect, useMemo, useState, type ReactNode
 import { produce } from 'immer'
 import type {
   AppState, Task, TaskApplication, User, Review, LedgerEntry, LedgerType,
+  BoostPackageId,
 } from './types'
 import { assessRisk, assessMessage, type RiskResult } from './risk'
+import { boostEligibility, boostQuota, monthKey, BOOST_PACKAGES, PLUS_PRICE, PRO_PRICE, VERIFY_SERVICES } from './monetize'
 import { buildSeedState } from '../data/seed'
 
 const STORAGE_KEY = 'utopia-state-v1'
 // 持久化结构版本:与 localStorage 中的状态不匹配时重建种子数据
-const SCHEMA_VERSION = 3
+const SCHEMA_VERSION = 4
 
 let seq = 1000
 export function genId(prefix: string): string {
@@ -675,6 +677,110 @@ function buildActions(setState: (fn: (s: AppState) => AppState) => void, getStat
         if (u) u.restricted = note || undefined
         d.auditLogs.unshift({ id: genId('A'), admin, action: note ? '限制用户' : '解除限制', target: userId, basis: note || '申诉通过', createdAt: nowISO() })
       })
+    },
+
+    // ---------- 商业化 ----------
+    // 现金与积分严格分离:以下所有操作只产生现金流水(演示支付),不触碰积分账本
+
+    subscribePlus(plan: 'monthly' | 'yearly') {
+      mutate(d => {
+        const u = findUser(d, d.currentUserId!)
+        if (!u) return
+        const renew = new Date()
+        renew.setMonth(renew.getMonth() + (plan === 'yearly' ? 12 : 1))
+        const p2 = (n: number) => String(n).padStart(2, '0')
+        u.plus = { active: true, plan, since: nowISO(), renewsAt: `${renew.getFullYear()}-${p2(renew.getMonth() + 1)}-${p2(renew.getDate())}` }
+        d.cashLedger.unshift({ id: genId('C'), type: 'plus_subscribe', userId: u.id, amountCny: PLUS_PRICE[plan], memo: `Utopia Plus ${plan === 'yearly' ? '年付' : '月付'}(演示支付)`, createdAt: nowISO() })
+        notify(d, u.id, '✦', '欢迎加入 Utopia Plus', 'Plus 只提升便利,不影响信任分与匹配公平。你的免费加速额度已更新。', '/plus')
+      })
+    },
+    cancelPlus() {
+      mutate(d => {
+        const u = findUser(d, d.currentUserId!)
+        if (u?.plus) u.plus.active = false
+      })
+    },
+    subscribePro() {
+      mutate(d => {
+        const u = findUser(d, d.currentUserId!)
+        if (!u) return
+        u.pro = u.pro ?? { active: true, since: nowISO(), headline: `${u.skills[0] ?? '互助'}服务`, portfolio: [], weeklySlots: [] }
+        u.pro.active = true
+        d.cashLedger.unshift({ id: genId('C'), type: 'pro_subscribe', userId: u.id, amountCny: PRO_PRICE, memo: 'Utopia Pro 月付(演示支付)', createdAt: nowISO() })
+        notify(d, u.id, '💼', 'Utopia Pro 已开通', 'Pro 提供专业工具,不改变信任、评价与匹配规则。', '/pro')
+      })
+    },
+    updatePro(p: { headline?: string; portfolio?: string[]; weeklySlots?: string[]; autoReply?: string }) {
+      mutate(d => {
+        const u = findUser(d, d.currentUserId!)
+        if (u?.pro) Object.assign(u.pro, p)
+      })
+    },
+
+    // 任务加速:付费只能扩大合格曝光;敏感/风险任务与未认证用户直接拒绝
+    purchaseBoost(taskId: string, packageId: BoostPackageId, useQuota: 'paid' | 'free' | 'plus'): { ok: boolean; reason?: string } {
+      const s = getState()
+      const t = s.tasks.find(x => x.id === taskId)
+      const u = s.users.find(x => x.id === s.currentUserId)
+      if (!t || !u) return { ok: false, reason: '任务不存在' }
+      const elig = boostEligibility(s, t, u)
+      if (!elig.ok) return { ok: false, reason: elig.reasons[0] }
+      const mk = monthKey(nowISO())
+      const quota = boostQuota(u, mk)
+      if (useQuota === 'free' && quota.freeLeft <= 0) return { ok: false, reason: '本月免费加速额度已用完' }
+      if (useQuota === 'plus' && quota.plusLeft <= 0) return { ok: false, reason: 'Plus 加速额度已用完或未开通 Plus' }
+      const pkg = BOOST_PACKAGES.find(p => p.id === packageId)!
+      mutate(d => {
+        const du = findUser(d, u.id)!
+        if (!du.boostQuota || du.boostQuota.month !== mk) du.boostQuota = { month: mk, freeUsed: 0, plusUsed: 0 }
+        if (useQuota === 'free') du.boostQuota.freeUsed += 1
+        if (useQuota === 'plus') du.boostQuota.plusUsed += 1
+        const expire = new Date(Date.now() + (packageId === 'instant' ? 6 : 72) * 3600000)
+        const p2 = (n: number) => String(n).padStart(2, '0')
+        const expiresAt = `${expire.getFullYear()}-${p2(expire.getMonth() + 1)}-${p2(expire.getDate())}T${p2(expire.getHours())}:${p2(expire.getMinutes())}:00`
+        // 自然曝光快照:演示环境用任务 id 派生的确定性数字
+        let h = 0; for (const c of taskId) h = (h * 31 + c.charCodeAt(0)) % 997
+        d.boosts.unshift({
+          id: genId('B'), taskId, buyerId: u.id, packageId,
+          source: useQuota === 'paid' ? 'paid' : useQuota === 'free' ? 'free_quota' : 'plus_quota',
+          priceCny: useQuota === 'paid' ? pkg.priceCny : 0,
+          createdAt: nowISO(), expiresAt,
+          stats: { organicViews: 40 + h % 80, boostedViews: 0, detailVisits: 0, qualifiedApplicants: 0, matched: false },
+        })
+        if (useQuota === 'paid')
+          d.cashLedger.unshift({ id: genId('C'), type: 'boost', userId: u.id, amountCny: pkg.priceCny, memo: `${pkg.label} ·「${t.title.slice(0, 16)}」(演示支付)`, createdAt: nowISO() })
+        notify(d, u.id, '🚀', '任务加速已生效', `「${t.title}」的${pkg.label}已开始,展示时会明确标注「推广」。加速不承诺一定有人申请。`, `/task/${taskId}`)
+      })
+      return { ok: true }
+    },
+
+    updateAdPrefs(p: { reducePromos?: boolean; hiddenAdCategories?: string[]; personalized?: boolean }) {
+      mutate(d => {
+        const u = findUser(d, d.currentUserId!)
+        if (!u) return
+        u.adPrefs = { reducePromos: false, hiddenAdCategories: [], personalized: true, ...u.adPrefs, ...p }
+      })
+    },
+    hideAdCategory(cat: string) {
+      mutate(d => {
+        const u = findUser(d, d.currentUserId!)
+        if (!u) return
+        if (!u.adPrefs) u.adPrefs = { reducePromos: false, hiddenAdCategories: [], personalized: true }
+        if (!u.adPrefs.hiddenAdCategories.includes(cat)) u.adPrefs.hiddenAdCategories.push(cat)
+      })
+    },
+
+    // 验证服务:按第三方成本收费;付费不代表通过,结果由独立审核决定
+    purchaseVerifyService(serviceId: string): { ok: boolean } {
+      const svc = VERIFY_SERVICES.find(v => v.id === serviceId)
+      if (!svc) return { ok: false }
+      mutate(d => {
+        const u = findUser(d, d.currentUserId!)
+        if (!u) return
+        d.cashLedger.unshift({ id: genId('C'), type: 'verify_service', userId: u.id, amountCny: svc.costCny, memo: `${svc.label}(成本价,演示支付)`, createdAt: nowISO() })
+        notify(d, u.id, '🛡️', `${svc.label}已提交`, '审核由独立流程完成,通常需要 1-3 个工作日。付费不影响审核结果。', '/trust')
+      })
+      return { ok: true }
     },
 
     resetDemo() {

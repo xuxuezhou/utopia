@@ -116,6 +116,26 @@ export function LevelBadge({ level, short = false }: { level: VerificationLevel;
   return <span className={`chip ${m.cls}`}>{m.icon} {short ? `L${level}` : m.label}</span>
 }
 
+// ============ Utopia Plus 星标 ============
+// 会员标识与信任体系彻底分开:星形 + 品牌红,绝不使用认证勾的圆形样式。
+// 只表示「订阅了效率工具」,不代表更安全或更可信。
+export function PlusBadge({ user, withText = false }: { user?: User | null; withText?: boolean }) {
+  if (!user?.plus?.active) return null
+  return (
+    <span className="inline-flex items-center gap-0.5 shrink-0" title="Utopia Plus 会员 · 仅代表订阅了效率工具,与信任等级无关">
+      <svg width="13" height="13" viewBox="0 0 24 24" aria-label="Utopia Plus">
+        <path d="M12 2l2.6 6.2 6.7.5-5.1 4.4 1.6 6.6L12 16.2l-5.8 3.5 1.6-6.6-5.1-4.4 6.7-.5z" fill="#FF3B4F" />
+      </svg>
+      {withText && <span className="text-[10px] font-semibold text-coral-500">Plus</span>}
+    </span>
+  )
+}
+
+// 推广标注:所有付费曝光内容必须清晰标注,不得伪装成自然推荐
+export function PromoTag({ text = '推广' }: { text?: string }) {
+  return <span className="chip !px-1.5 !py-0 !text-[10px] bg-cream-100 text-ink-400 border border-cream-300">{text}</span>
+}
+
 // 用户名旁的小认证点(小红书式,不做勋章墙)
 export function VerifyDot({ level }: { level: VerificationLevel }) {
   if (level < 1) return null

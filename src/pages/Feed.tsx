@@ -1,12 +1,16 @@
 import { useMemo, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { Heart, Star, Search, HandHeart } from 'lucide-react'
-import { useStore } from '../lib/store'
-import { PostCard, TaskCard } from '../components/cards'
+import { useStore, useCurrentUser, nowISO } from '../lib/store'
+import { AdCard, PostCard, TaskCard } from '../components/cards'
 import { Avatar, Empty, VerifyDot, fmtTime, toast } from '../components/ui'
-import type { ContentPost, Task, TaskCategory } from '../lib/types'
+import { PROMO_INTERVAL } from '../lib/monetize'
+import type { Ad, ContentPost, Task, TaskCategory } from '../lib/types'
 
-type FeedItem = { kind: 'post'; post: ContentPost; at: string } | { kind: 'task'; task: Task; at: string }
+type FeedItem =
+  | { kind: 'post'; post: ContentPost; at: string }
+  | { kind: 'task'; task: Task; at: string; promoted?: boolean }
+  | { kind: 'ad'; ad: Ad }
 
 const CHANNELS: { key: string; label: string; cats?: TaskCategory[]; postTags?: string[] }[] = [
   { key: 'rec', label: '推荐' },
@@ -23,6 +27,7 @@ const CHANNELS: { key: string; label: string; cats?: TaskCategory[]; postTags?: 
 
 export default function Feed() {
   const { state } = useStore()
+  const me = useCurrentUser()
   const nav = useNavigate()
   const [tab, setTab] = useState<'follow' | 'discover' | 'nearby'>('discover')
   const [channel, setChannel] = useState('rec')
@@ -50,12 +55,53 @@ export default function Feed() {
     }
 
     if (ch.cats) {
-      list = list.filter(it => it.kind === 'task'
-        ? ch.cats!.includes(it.task.category)
-        : (ch.key === 'community' ? !!it.post.communityId : ch.key === 'skill' ? it.post.kind === 'skill' : ch.key === 'charity' ? it.post.kind === 'event' : false))
+      list = list.filter(it => it.kind !== 'task'
+        ? (it.kind === 'post' && (ch.key === 'community' ? !!it.post.communityId : ch.key === 'skill' ? it.post.kind === 'skill' : ch.key === 'charity' ? it.post.kind === 'event' : false))
+        : ch.cats!.includes(it.task.category))
+    }
+
+    // ---- 推广位注入(只在「发现·推荐」;关注/附近/垂直频道保持纯自然内容) ----
+    // 规则:每 PROMO_INTERVAL 张内容最多 1 个推广位;明确标注;同一发布者不连续;
+    // 用户可减少推广密度;Plus 会员基本无广告;隐藏类目的广告不出现。
+    if (tab === 'discover' && channel === 'rec') {
+      const prefs = me?.adPrefs
+      const now = nowISO()
+      const interval = prefs?.reducePromos ? PROMO_INTERVAL * 2 : PROMO_INTERVAL
+
+      // 加速中的任务:从自然位置提出,插入推广位并标注(不重复出现)
+      const boostedIds = state.boosts.filter(b => b.expiresAt > now).map(b => b.taskId)
+      const boostedItems: FeedItem[] = []
+      const seenPublisher = new Set<string>()
+      for (const id of boostedIds) {
+        const idx = list.findIndex(it => it.kind === 'task' && it.task.id === id)
+        if (idx < 0) continue
+        const it = list[idx] as Extract<FeedItem, { kind: 'task' }>
+        if (seenPublisher.has(it.task.publisherId)) continue // 同一发布者不占多个推广位
+        seenPublisher.add(it.task.publisherId)
+        list.splice(idx, 1)
+        boostedItems.push({ ...it, promoted: true })
+      }
+
+      // 本地广告:Plus 几乎无广告;尊重隐藏类目
+      const ads: FeedItem[] = me?.plus?.active ? [] :
+        state.ads.filter(a => !prefs?.hiddenAdCategories?.includes(a.category)).map(ad => ({ kind: 'ad' as const, ad }))
+
+      // 交替填充推广位:加速任务优先,其后广告
+      const promoQueue: FeedItem[] = []
+      const maxLen = Math.max(boostedItems.length, ads.length)
+      for (let i = 0; i < maxLen; i++) {
+        if (boostedItems[i]) promoQueue.push(boostedItems[i])
+        if (ads[i]) promoQueue.push(ads[i])
+      }
+      let pos = 4 // 首个推广位不占首屏最顶部
+      for (const promo of promoQueue) {
+        if (pos > list.length) break
+        list.splice(pos, 0, promo)
+        pos += interval + 1
+      }
     }
     return list
-  }, [state.tasks, state.posts, state.following, tab, channel])
+  }, [state.tasks, state.posts, state.following, state.boosts, state.ads, me, tab, channel])
 
   return (
     <div className="-mt-1">
@@ -104,7 +150,9 @@ export default function Feed() {
         <div className="masonry columns-2 md:columns-3 lg:columns-4 xl:columns-5">
           {items.map(it => it.kind === 'post'
             ? <PostCard key={`p${it.post.id}`} post={it.post} />
-            : <TaskCard key={`t${it.task.id}`} task={it.task} />)}
+            : it.kind === 'ad'
+              ? <AdCard key={`ad${it.ad.id}`} ad={it.ad} />
+              : <TaskCard key={`t${it.task.id}`} task={it.task} promoted={it.promoted} />)}
         </div>
       )}
     </div>
