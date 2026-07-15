@@ -63,7 +63,7 @@ export default function Profile() {
               ? <div className="w-full h-24 md:h-32" style={{ background: `linear-gradient(135deg, oklch(0.93 0.06 ${user.profileTheme.hue}), oklch(0.97 0.02 ${(user.profileTheme.hue + 40) % 360}), oklch(0.9 0.08 ${(user.profileTheme.hue + 320) % 360}))` }} />
               : <div className="w-full h-24 md:h-32 bg-gradient-to-br from-coral-50 via-cream-100 to-violet-50" />}
           {isMe && (
-            <div className="absolute right-3 bottom-3 flex gap-2">
+            <div className="absolute right-3 bottom-3 flex gap-2 z-20">
               <button className="chip bg-black/40 text-white backdrop-blur !py-1.5 !px-3 cursor-pointer"
                 onClick={() => hasPlusBenefits(me) ? setTheme(true) : toast('主页装扮是 Plus / Pro 会员功能')}>
                 🎨 装扮{!hasPlusBenefits(me) && ' 🔒'}
@@ -77,7 +77,7 @@ export default function Profile() {
       )}
 
       {/* 顶部 */}
-      <div className={`flex items-start gap-4 ${user.bgUrl || isMe ? '-mt-8 relative z-10' : 'pt-3'}`}>
+      <div className={`flex items-start gap-4 ${user.bgUrl || isMe || user.profileTheme ? '-mt-8 relative z-10 pointer-events-none [&>*]:pointer-events-auto' : 'pt-3'}`}>
         <span className="relative shrink-0">
           <span className="block rounded-full ring-[3px] ring-white">
             <Avatar user={user} size={76} link={false} />
@@ -89,7 +89,7 @@ export default function Profile() {
             </button>
           )}
         </span>
-        <div className={`flex-1 min-w-0 ${user.bgUrl || isMe ? 'pt-9' : ''}`}>
+        <div className={`flex-1 min-w-0 ${user.bgUrl || isMe || user.profileTheme ? 'pt-9' : ''}`}>
           <div className="flex items-center gap-1.5 flex-wrap">
             <h1 className="text-lg font-semibold text-ink-900">{user.name}</h1>
             <VerifyDot level={user.level} />
@@ -104,7 +104,7 @@ export default function Profile() {
           </div>
         </div>
         {isMe && (
-          <button className={`p-2 text-ink-500 cursor-pointer ${user.bgUrl || isMe ? 'pt-11' : ''}`} onClick={() => setMenu(true)} aria-label="设置"><Settings size={20} strokeWidth={1.8} /></button>
+          <button className={`p-2 text-ink-500 cursor-pointer self-start ${user.bgUrl || isMe || user.profileTheme ? 'mt-9' : ''}`} onClick={() => setMenu(true)} aria-label="设置"><Settings size={20} strokeWidth={1.8} /></button>
         )}
       </div>
 
