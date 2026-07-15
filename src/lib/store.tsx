@@ -700,14 +700,21 @@ function buildActions(setState: (fn: (s: AppState) => AppState) => void, getStat
         if (u?.plus) u.plus.active = false
       })
     },
-    subscribePro() {
+    subscribePro(plan: 'monthly' | 'yearly' = 'monthly') {
       mutate(d => {
         const u = findUser(d, d.currentUserId!)
         if (!u) return
         u.pro = u.pro ?? { active: true, since: nowISO(), headline: `${u.skills[0] ?? '互助'}服务`, portfolio: [], weeklySlots: [] }
         u.pro.active = true
-        d.cashLedger.unshift({ id: genId('C'), type: 'pro_subscribe', userId: u.id, amountCny: PRO_PRICE, memo: 'Utopia Pro 月付(演示支付)', createdAt: nowISO() })
-        notify(d, u.id, '💼', 'Utopia Pro 已开通', 'Pro 提供专业工具,不改变信任、评价与匹配规则。', '/pro')
+        u.pro.plan = plan
+        d.cashLedger.unshift({ id: genId('C'), type: 'pro_subscribe', userId: u.id, amountCny: PRO_PRICE[plan], memo: `Utopia Pro ${plan === 'yearly' ? '年付' : '月付'}(演示支付)`, createdAt: nowISO() })
+        notify(d, u.id, '💼', 'Utopia Pro 已开通', 'Pro 包含全部 Plus 权益与专业工具,不改变信任、评价与匹配规则。', '/plus')
+      })
+    },
+    cancelPro() {
+      mutate(d => {
+        const u = findUser(d, d.currentUserId!)
+        if (u?.pro) u.pro.active = false
       })
     },
     updatePro(p: { headline?: string; portfolio?: string[]; weeklySlots?: string[]; autoReply?: string }) {

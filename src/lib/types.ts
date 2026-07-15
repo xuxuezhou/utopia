@@ -303,9 +303,10 @@ export interface PlusState {
   renewsAt: string
 }
 
-// Utopia Pro:面向高频技能贡献者/社区组织者的专业工具,不能购买好评或信任
+// Utopia Pro:Plus 的进阶版(含全部 Plus 权益)+ 专业工具,不能购买好评或信任
 export interface ProState {
   active: boolean
+  plan?: 'monthly' | 'yearly'
   since: string
   headline: string          // 专业主页标题
   portfolio: string[]       // 作品集(文字条目演示)

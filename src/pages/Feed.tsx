@@ -4,7 +4,7 @@ import { Heart, Star, Search, HandHeart } from 'lucide-react'
 import { useStore, useCurrentUser, nowISO } from '../lib/store'
 import { AdCard, PostCard, TaskCard } from '../components/cards'
 import { Avatar, Empty, VerifyDot, fmtTime, toast } from '../components/ui'
-import { PROMO_INTERVAL } from '../lib/monetize'
+import { PROMO_INTERVAL, hasPlusBenefits } from '../lib/monetize'
 import type { Ad, ContentPost, Task, TaskCategory } from '../lib/types'
 
 type FeedItem =
@@ -82,8 +82,8 @@ export default function Feed() {
         boostedItems.push({ ...it, promoted: true })
       }
 
-      // 本地广告:Plus 几乎无广告;尊重隐藏类目
-      const ads: FeedItem[] = me?.plus?.active ? [] :
+      // 本地广告:Plus/Pro 几乎无广告;尊重隐藏类目
+      const ads: FeedItem[] = hasPlusBenefits(me) ? [] :
         state.ads.filter(a => !prefs?.hiddenAdCategories?.includes(a.category)).map(ad => ({ kind: 'ad' as const, ad }))
 
       // 交替填充推广位:加速任务优先,其后广告

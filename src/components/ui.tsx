@@ -116,17 +116,19 @@ export function LevelBadge({ level, short = false }: { level: VerificationLevel;
   return <span className={`chip ${m.cls}`}>{m.icon} {short ? `L${level}` : m.label}</span>
 }
 
-// ============ Utopia Plus 星标 ============
-// 会员标识与信任体系彻底分开:星形 + 品牌红,绝不使用认证勾的圆形样式。
-// 只表示「订阅了效率工具」,不代表更安全或更可信。
-export function PlusBadge({ user, withText = false }: { user?: User | null; withText?: boolean }) {
-  if (!user?.plus?.active) return null
+// ============ 会员标识(Plus / Pro) ============
+// 与信任体系彻底分开:小巧文字胶囊,绝不使用认证勾的圆形样式。
+// 只表示「订阅了效率/专业工具」,不代表更安全或更可信。Pro 为 Plus 的进阶版,优先显示。
+export function PlusBadge({ user }: { user?: User | null }) {
+  const pro = user?.pro?.active
+  if (!pro && !user?.plus?.active) return null
   return (
-    <span className="inline-flex items-center gap-0.5 shrink-0" title="Utopia Plus 会员 · 仅代表订阅了效率工具,与信任等级无关">
-      <svg width="13" height="13" viewBox="0 0 24 24" aria-label="Utopia Plus">
-        <path d="M12 2l2.6 6.2 6.7.5-5.1 4.4 1.6 6.6L12 16.2l-5.8 3.5 1.6-6.6-5.1-4.4 6.7-.5z" fill="#FF3B4F" />
-      </svg>
-      {withText && <span className="text-[10px] font-semibold text-coral-500">Plus</span>}
+    <span
+      className={`inline-flex items-center shrink-0 rounded-full px-1.5 h-[14px] text-[9px] font-semibold tracking-wide text-white select-none ${pro ? 'bg-ink-900' : 'bg-gradient-to-r from-coral-500 to-coral-400'}`}
+      title={pro ? 'Utopia Pro · 专业工具订阅(含 Plus 权益),与信任等级无关' : 'Utopia Plus · 仅代表订阅了效率工具,与信任等级无关'}
+      aria-label={pro ? 'Utopia Pro' : 'Utopia Plus'}
+    >
+      {pro ? 'Pro' : 'Plus'}
     </span>
   )
 }

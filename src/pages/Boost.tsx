@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { useStore, useCurrentUser, nowISO } from '../lib/store'
-import { BOOST_PACKAGES, boostEligibility, boostQuota, monthKey, subsidyHint, PROMO_INTERVAL } from '../lib/monetize'
+import { BOOST_PACKAGES, boostEligibility, boostQuota, hasPlusBenefits, monthKey, subsidyHint, PROMO_INTERVAL } from '../lib/monetize'
 import type { BoostPackageId } from '../lib/types'
 import { Modal, toast } from '../components/ui'
 
@@ -79,8 +79,8 @@ export default function Boost() {
           </div>
           <div className="card p-4 text-xs text-ink-400">
             本月免费额度:<b className="text-ink-700">{quota.freeLeft}</b> 次(每位用户每月 1 次)
-            {me.plus?.active && <> · Plus 额度:<b className="text-ink-700">{quota.plusLeft}</b> 次</>}
-            {!me.plus?.active && <> · <Link to="/plus" className="text-violet-600">Plus 会员</Link>每月另有 3 次免费加速</>}
+            {hasPlusBenefits(me) && <> · 会员额度:<b className="text-ink-700">{quota.plusLeft}</b> 次</>}
+            {!hasPlusBenefits(me) && <> · <Link to="/plus" className="text-violet-600">Plus / Pro 会员</Link>每月另有 3 次免费加速</>}
           </div>
           <button className="btn-primary w-full" disabled={!pkg} onClick={() => setPay(true)}>
             {chosen ? `选择「${chosen.label}」` : '选择一个加速套餐'}
@@ -95,7 +95,7 @@ export default function Boost() {
         </p>
         <div className="space-y-2">
           {quota.freeLeft > 0 && <button className="btn-green w-full" onClick={() => buy('free')}>使用本月免费额度(¥0)</button>}
-          {quota.plusLeft > 0 && <button className="btn-secondary w-full" onClick={() => buy('plus')}>使用 Plus 额度(¥0,剩 {quota.plusLeft} 次)</button>}
+          {quota.plusLeft > 0 && <button className="btn-secondary w-full" onClick={() => buy('plus')}>使用会员额度(¥0,剩 {quota.plusLeft} 次)</button>}
           <button className="btn-primary w-full" onClick={() => buy('paid')}>支付 ¥{chosen?.priceCny}(演示支付)</button>
         </div>
         <p className="text-[11px] text-ink-300 mt-3 text-center">现金只购买曝光工具,不能购买或兑换积分</p>

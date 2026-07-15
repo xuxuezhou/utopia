@@ -81,7 +81,7 @@ export default function Profile() {
           <div className="flex items-center gap-1.5 flex-wrap">
             <h1 className="text-lg font-semibold text-ink-900">{user.name}</h1>
             <VerifyDot level={user.level} />
-            <PlusBadge user={user} withText />
+            <PlusBadge user={user} />
             {user.restricted && <span className="chip bg-coral-50 text-coral-600">⚠ 受限</span>}
           </div>
           <div className="text-xs text-ink-300 mt-0.5">Utopia号:{user.id} · {user.city}</div>

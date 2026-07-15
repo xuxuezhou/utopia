@@ -4,9 +4,14 @@
 
 import type { AppState, BoostPackageId, Task, User } from './types'
 
-// ---------- Utopia Plus ----------
+// ---------- 会员体系:Free → Plus → Pro(Pro 包含全部 Plus 权益) ----------
 
 export const PLUS_PRICE = { monthly: 15, yearly: 118 } // ¥,演示定价
+
+// Pro 是 Plus 的进阶版:全部 Plus 权益 + 专业工具
+export function hasPlusBenefits(user?: User | null): boolean {
+  return !!(user?.plus?.active || user?.pro?.active)
+}
 
 // Plus 提供的只有便利
 export const PLUS_BENEFITS: { icon: string; title: string; desc: string }[] = [
@@ -91,12 +96,12 @@ export function boostEligibility(state: AppState, task: Task, buyer: User): Boos
   return { ok: reasons.length === 0, reasons }
 }
 
-// 每月加速配额:所有用户 1 次免费;Plus 会员另有 3 次
+// 每月加速配额:所有用户 1 次免费;Plus/Pro 会员另有 3 次
 export function boostQuota(user: User, monthKey: string): { freeLeft: number; plusLeft: number } {
   const q = user.boostQuota?.month === monthKey ? user.boostQuota : { month: monthKey, freeUsed: 0, plusUsed: 0 }
   return {
     freeLeft: Math.max(0, 1 - q.freeUsed),
-    plusLeft: user.plus?.active ? Math.max(0, 3 - q.plusUsed) : 0,
+    plusLeft: hasPlusBenefits(user) ? Math.max(0, 3 - q.plusUsed) : 0,
   }
 }
 
@@ -137,9 +142,9 @@ export const AD_PLACEMENT_FORBIDDEN = [
   '开屏广告', '强制插屏', '聊天页面', '任务执行页面', '安全中心', '伪装成普通用户任务的商业内容',
 ]
 
-// ---------- Utopia Pro ----------
+// ---------- Utopia Pro(Plus 的进阶版) ----------
 
-export const PRO_PRICE = 25 // ¥/月,演示定价
+export const PRO_PRICE = { monthly: 25, yearly: 198 } // ¥,演示定价,含全部 Plus 权益
 
 export const PRO_FEATURES: { icon: string; title: string; desc: string }[] = [
   { icon: '💼', title: '专业技能主页', desc: '展示技能、经验与服务范围的专属版块' },

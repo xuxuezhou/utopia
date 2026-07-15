@@ -22,7 +22,6 @@ import Plus from './pages/Plus'
 import Boost from './pages/Boost'
 import Promo from './pages/Promo'
 import Org from './pages/Org'
-import Pro from './pages/Pro'
 
 function Guard({ children }: { children: React.ReactNode }) {
   const { state } = useStore()
@@ -56,7 +55,7 @@ function App() {
           <Route path="/boost/:taskId" element={<Boost />} />
           <Route path="/promo" element={<Promo />} />
           <Route path="/org" element={<Org />} />
-          <Route path="/pro" element={<Pro />} />
+          <Route path="/pro" element={<Navigate to="/plus" replace />} />
           <Route path="/admin" element={<Admin />} />
           <Route path="/admin/:section" element={<Admin />} />
         </Route>

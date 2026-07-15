@@ -280,7 +280,7 @@ try {
   // ---------- 商业化:订阅 Plus 用现金,积分账本零变化 ----------
   await page.goto(`${BASE}/#/plus`, { waitUntil: 'networkidle0' })
   await sleep(400)
-  await clickByText(page, 'button', '开通 Utopia Plus')
+  await clickByText(page, 'button', '开通 Plus')
   await sleep(400)
   await clickByText(page, 'button', '确认支付')
   await sleep(600)
