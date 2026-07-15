@@ -6,7 +6,7 @@ import type {
   BoostPackageId,
 } from './types'
 import { assessRisk, assessMessage, type RiskResult } from './risk'
-import { boostEligibility, boostQuota, monthKey, BOOST_PACKAGES, PLUS_PRICE, PRO_PRICE, VERIFY_SERVICES } from './monetize'
+import { boostEligibility, boostQuota, hasPlusBenefits, monthKey, BOOST_PACKAGES, PLUS_PRICE, PRO_PRICE, VERIFY_SERVICES } from './monetize'
 import { buildSeedState } from '../data/seed'
 
 const STORAGE_KEY = 'utopia-state-v1'
@@ -224,6 +224,19 @@ function buildActions(setState: (fn: (s: AppState) => AppState) => void, getStat
             id: genId('SI'), severity: 'S1', taskId: id, userId: uid,
             summary: `任务进入人工复核:${risk.flags.join('、')}`, status: 'open', log: [], createdAt: nowISO(),
           })
+        }
+        // Plus 即时提醒:新任务命中会员保存的搜索条件时立刻通知(不改变任务本身的曝光)
+        const text = `${draft.title} ${draft.description}`.toLowerCase()
+        for (const u of d.users) {
+          if (u.id === uid || !hasPlusBenefits(u) || !u.savedSearches?.length) continue
+          const hit = u.savedSearches.find(ss => {
+            if (ss.query && !text.includes(ss.query.toLowerCase())) return false
+            if (ss.filters.online === 'online' && !draft.online) return false
+            if (ss.filters.online === 'offline' && draft.online) return false
+            if (draft.points < ss.filters.minPoints || draft.points > ss.filters.maxPoints) return false
+            return true
+          })
+          if (hit) notify(d, u.id, '🔔', '有符合你保存条件的新任务', `「${draft.title}」命中「${hit.name}」,快去看看。`, `/task/${id}`)
         }
       })
       return { ok: true, risk, taskId: id }
@@ -458,6 +471,11 @@ function buildActions(setState: (fn: (s: AppState) => AppState) => void, getStat
         if (other) {
           const from = findUser(d, fromId)
           notify(d, other, '💬', `${from?.name ?? '有人'}给你发来消息`, text.slice(0, 40), `/messages/${chatId}`)
+          // Pro 自动回复:对方开通 Pro 且设置了自动回复,且尚未在本会话回复过
+          const otherUser = findUser(d, other)
+          if (otherUser?.pro?.active && otherUser.pro.autoReply && !c.messages.some(m => m.fromId === other)) {
+            c.messages.push({ id: genId('m'), fromId: other, text: `[自动回复] ${otherUser.pro.autoReply}`, createdAt: nowISO() })
+          }
         }
       })
       return check
@@ -774,6 +792,50 @@ function buildActions(setState: (fn: (s: AppState) => AppState) => void, getStat
         if (!u) return
         if (!u.adPrefs) u.adPrefs = { reducePromos: false, hiddenAdCategories: [], personalized: true }
         if (!u.adPrefs.hiddenAdCategories.includes(cat)) u.adPrefs.hiddenAdCategories.push(cat)
+      })
+    },
+
+    // ---- Plus 效率工具(免费用户不受影响,只是没有这些快捷方式) ----
+    saveSearch(name: string, query: string, filters: { online: 'all' | 'online' | 'offline'; minPoints: number; maxPoints: number; maxKm: number }) {
+      mutate(d => {
+        const u = findUser(d, d.currentUserId!)
+        if (!u) return
+        if (!u.savedSearches) u.savedSearches = []
+        u.savedSearches.unshift({ id: genId('SS'), name, query, filters })
+      })
+    },
+    deleteSearch(id: string) {
+      mutate(d => {
+        const u = findUser(d, d.currentUserId!)
+        if (u?.savedSearches) u.savedSearches = u.savedSearches.filter(s => s.id !== id)
+      })
+    },
+    saveTemplate(name: string, text: string) {
+      mutate(d => {
+        const u = findUser(d, d.currentUserId!)
+        if (!u) return
+        if (!u.taskTemplates) u.taskTemplates = []
+        u.taskTemplates.unshift({ id: genId('TP'), name, text })
+      })
+    },
+    deleteTemplate(id: string) {
+      mutate(d => {
+        const u = findUser(d, d.currentUserId!)
+        if (u?.taskTemplates) u.taskTemplates = u.taskTemplates.filter(t => t.id !== id)
+      })
+    },
+    saveDraft(text: string, scheduledAt?: string) {
+      mutate(d => {
+        const u = findUser(d, d.currentUserId!)
+        if (!u) return
+        if (!u.taskDrafts) u.taskDrafts = []
+        u.taskDrafts.unshift({ id: genId('DR'), text, scheduledAt, createdAt: nowISO() })
+      })
+    },
+    deleteDraft(id: string) {
+      mutate(d => {
+        const u = findUser(d, d.currentUserId!)
+        if (u?.taskDrafts) u.taskDrafts = u.taskDrafts.filter(t => t.id !== id)
       })
     },
 

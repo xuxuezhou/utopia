@@ -76,6 +76,18 @@ export interface User {
   pro?: ProState
   adPrefs?: AdPrefs
   boostQuota?: { month: string; freeUsed: number; plusUsed: number }  // 每月配额:所有人 1 次免费,Plus 另有 3 次
+  // ---- Plus 效率工具的数据 ----
+  savedSearches?: SavedSearch[]
+  taskTemplates?: { id: string; name: string; text: string }[]
+  taskDrafts?: { id: string; text: string; scheduledAt?: string; createdAt: string }[]
+}
+
+// Plus:保存的搜索条件(命中的新任务会即时通知)
+export interface SavedSearch {
+  id: string
+  name: string
+  query: string           // 关键词,可为空
+  filters: { online: 'all' | 'online' | 'offline'; minPoints: number; maxPoints: number; maxKm: number }
 }
 
 export interface Community {

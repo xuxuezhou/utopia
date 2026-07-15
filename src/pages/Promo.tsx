@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom'
 import { useStore, useCurrentUser } from '../lib/store'
-import { BOOST_PACKAGES } from '../lib/monetize'
+import { BOOST_PACKAGES, hasPlusBenefits } from '../lib/monetize'
 import { Stat } from '../components/ui'
 
 // 推广效果数据:自然曝光与推广曝光分开呈现,让付费效果透明可核对
@@ -79,11 +79,16 @@ export default function Promo() {
             return (
               <Link key={t.id} to={`/task/${t.id}`} className="flex items-center justify-between bg-cream-100 rounded-xl px-3.5 py-2.5 hover:bg-cream-200 transition text-sm">
                 <span className="truncate">{t.images[0]} {t.title}</span>
-                <span className="text-xs text-ink-400 shrink-0 ml-2">自然曝光 {40 + h % 80} · 申请 {t.applicants.length}</span>
+                <span className="text-xs text-ink-400 shrink-0 ml-2">
+                  {hasPlusBenefits(me) ? `自然曝光 ${40 + h % 80} · 申请 ${t.applicants.length}` : `申请 ${t.applicants.length}`}
+                </span>
               </Link>
             )
           })}
           {myOpenTasks.length === 0 && <p className="text-sm text-ink-300">当前没有开放中的任务。</p>}
+          {!hasPlusBenefits(me) && myOpenTasks.length > 0 && (
+            <p className="text-[11px] text-ink-300">🔒 每个任务的详细曝光与申请漏斗是 <Link to="/plus" className="text-violet-600">Plus / Pro</Link> 功能;基础曝光本身对所有任务始终有效。</p>
+          )}
         </div>
       </div>
     </div>

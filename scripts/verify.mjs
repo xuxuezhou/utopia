@@ -302,6 +302,95 @@ try {
   })
   ok('商业化: Plus 会员信息流无广告', !plusFeed.ad)
 
+  // ---------- 会员功能落地:高级筛选 + 保存搜索 ----------
+  await page.goto(`${BASE}/#/search`, { waitUntil: 'networkidle0' })
+  await sleep(400)
+  await page.type('input[placeholder*="搜索任务"]', '网球')
+  await page.keyboard.press('Enter')
+  await sleep(400)
+  await clickByText(page, 'button', '高级筛选')
+  await sleep(300)
+  text = await bodyText(page)
+  ok('会员功能: 高级筛选面板打开', text.includes('保存条件并订阅提醒'))
+  page.once('dialog', d => d.accept('网球提醒'))
+  await clickByText(page, 'button', '保存条件并订阅提醒')
+  await sleep(500)
+  const ss = await page.evaluate(() => {
+    const s = JSON.parse(localStorage.getItem('utopia-state-v1'))
+    const meU = s.users.find(u => u.id === s.currentUserId)
+    return meU.savedSearches?.length ?? 0
+  })
+  ok('会员功能: 搜索条件已保存', ss >= 1)
+
+  // ---------- 会员功能落地:即时提醒(u2 保存了条件,u1 发布命中任务) ----------
+  await page.evaluate(() => {
+    const s = JSON.parse(localStorage.getItem('utopia-state-v1'))
+    const u2 = s.users.find(u => u.id === 'u2')
+    u2.savedSearches = [{ id: 'ss-test', name: '羽毛球提醒', query: '羽毛球', filters: { online: 'all', minPoints: 0, maxPoints: 500, maxKm: 20 } }]
+    localStorage.setItem('utopia-state-v1', JSON.stringify(s))
+  })
+  await page.reload({ waitUntil: 'networkidle0' })
+  await sleep(400)
+  await page.goto(`${BASE}/#/publish`, { waitUntil: 'networkidle0' })
+  await sleep(400)
+  await page.type('textarea', '周五晚上找人一起打一小时羽毛球,在大学体育馆。')
+  await clickByText(page, 'button', '下一步')
+  await sleep(500)
+  await clickByText(page, 'button', '确认发布')
+  await sleep(700)
+  const alerted = await page.evaluate(() => {
+    const s = JSON.parse(localStorage.getItem('utopia-state-v1'))
+    return s.notifications.some(n => n.userId === 'u2' && n.title.includes('保存条件'))
+  })
+  ok('会员功能: 命中保存条件的新任务触发即时提醒', alerted)
+
+  // ---------- 会员功能落地:任务模板 ----------
+  await page.goto(`${BASE}/#/`, { waitUntil: 'networkidle0' })
+  await sleep(200)
+  await page.goto(`${BASE}/#/publish`, { waitUntil: 'networkidle0' })
+  await sleep(400)
+  await page.type('textarea', '每周三晚找人陪练网球一小时,在城南网球俱乐部。')
+  page.once('dialog', d => d.accept('每周网球'))
+  await clickByText(page, 'button', '保存为模板')
+  await sleep(500)
+  const tpl = await page.evaluate(() => {
+    const s = JSON.parse(localStorage.getItem('utopia-state-v1'))
+    return (s.users.find(u => u.id === s.currentUserId).taskTemplates ?? []).length
+  })
+  ok('会员功能: 任务模板已保存', tpl >= 1)
+
+  // ---------- 会员功能落地:日历同步入口(参与中的任务) ----------
+  const activeTask = await page.evaluate(() => {
+    const s = JSON.parse(localStorage.getItem('utopia-state-v1'))
+    const t = s.tasks.find(t => ['matched', 'starting_soon', 'in_progress', 'pending_confirm'].includes(t.status) && (t.publisherId === s.currentUserId || t.helperId === s.currentUserId))
+    return t?.id ?? null
+  })
+  if (activeTask) {
+    await page.goto(`${BASE}/#/task/${activeTask}`, { waitUntil: 'networkidle0' })
+    await sleep(500)
+    text = await bodyText(page)
+    ok('会员功能: 任务详情提供日历同步(.ics)', text.includes('添加到日历'))
+  } else {
+    ok('会员功能: 任务详情提供日历同步(.ics)', false, '没有进行中的任务')
+  }
+
+  // ---------- 会员功能落地:Pro 私信自动回复(u2 是 Pro 且设置了自动回复) ----------
+  await page.goto(`${BASE}/#/user/u2`, { waitUntil: 'networkidle0' })
+  await sleep(500)
+  await clickByText(page, 'button', '私信')
+  await sleep(600)
+  await page.type('input[placeholder*="发消息"]', '你好,想请你帮忙拍照')
+  await clickByText(page, 'button', '发送')
+  await sleep(600)
+  text = await bodyText(page)
+  ok('会员功能: Pro 私信自动回复生效', text.includes('自动回复'))
+
+  // 订阅页应标注每项权益入口
+  await page.goto(`${BASE}/#/plus`, { waitUntil: 'networkidle0' })
+  await sleep(400)
+  text = await bodyText(page)
+  ok('会员功能: 订阅页标注权益入口与规划中', text.includes('高级筛选」') && text.includes('规划中'))
+
   // 截图
   await page.goto(`${BASE}/#/`, { waitUntil: 'networkidle0' }); await sleep(600)
   await page.screenshot({ path: 'scripts/shot-feed.png' })

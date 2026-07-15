@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useStore, useCurrentUser, availablePoints } from '../lib/store'
 import { parseNaturalTask, assessRisk, suggestPoints, localDateStr, type ParsedDraft, type RiskResult } from '../lib/risk'
+import { hasPlusBenefits } from '../lib/monetize'
 import { CATEGORY_META, type TaskCategory } from '../lib/types'
 import { TierBadge, toast } from '../components/ui'
 
@@ -250,9 +251,53 @@ export default function Publish() {
           <button key={c.label} className="chip bg-cream-100 text-ink-500 !py-2 !px-3.5 cursor-pointer hover:bg-cream-200" onClick={c.act}>{c.label}</button>
         ))}
       </div>
+      {/* Plus:常用模板与草稿(免费用户不受影响,只是没有这些快捷方式) */}
+      {hasPlusBenefits(me) && ((me.taskTemplates?.length ?? 0) > 0 || (me.taskDrafts?.length ?? 0) > 0) && (
+        <div className="mt-4 space-y-2">
+          {(me.taskTemplates?.length ?? 0) > 0 && (
+            <div className="flex flex-wrap gap-2 items-center">
+              <span className="text-xs text-ink-400">📋 我的模板:</span>
+              {me.taskTemplates!.map(t => (
+                <span key={t.id} className="chip bg-violet-50 text-violet-600 !py-1.5 inline-flex items-center gap-1.5">
+                  <button className="cursor-pointer" onClick={() => setInput(t.text)}>{t.name}</button>
+                  <button className="cursor-pointer text-violet-300" onClick={() => actions.deleteTemplate(t.id)}>✕</button>
+                </span>
+              ))}
+            </div>
+          )}
+          {(me.taskDrafts?.length ?? 0) > 0 && (
+            <div className="flex flex-wrap gap-2 items-center">
+              <span className="text-xs text-ink-400">📝 草稿:</span>
+              {me.taskDrafts!.map(dr => (
+                <span key={dr.id} className="chip bg-cream-100 text-ink-500 !py-1.5 inline-flex items-center gap-1.5">
+                  <button className="cursor-pointer" onClick={() => { setInput(dr.text); actions.deleteDraft(dr.id) }}>
+                    {dr.text.slice(0, 12)}…{dr.scheduledAt && ` ⏰${dr.scheduledAt.slice(5, 16).replace('T', ' ')}`}
+                  </button>
+                  <button className="cursor-pointer text-ink-300" onClick={() => actions.deleteDraft(dr.id)}>✕</button>
+                </span>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
       <button className="btn-primary w-full !py-3 mt-4" disabled={input.trim().length < 6} onClick={() => analyze(input.trim())}>
         下一步
       </button>
+      {hasPlusBenefits(me) && input.trim().length >= 6 && (
+        <div className="flex gap-2 mt-2">
+          <button className="btn-outline flex-1 !py-2 !text-xs" onClick={() => {
+            const name = prompt('模板名称:', input.trim().slice(0, 10))
+            if (name) { actions.saveTemplate(name, input.trim()); toast('已保存为模板') }
+          }}>📋 保存为模板</button>
+          <button className="btn-outline flex-1 !py-2 !text-xs" onClick={() => {
+            const when = prompt('预约发布时间(留空则仅存草稿):', '')
+            actions.saveDraft(input.trim(), when || undefined)
+            setInput('')
+            toast(when ? `草稿已保存,将提醒你在 ${when} 发布(演示)` : '草稿已保存')
+          }}>📝 存草稿 / 预约</button>
+        </div>
+      )}
       <div className="mt-6">
         <div className="text-xs text-ink-400 mb-2.5">大家都在找:</div>
         <div className="space-y-1.5">

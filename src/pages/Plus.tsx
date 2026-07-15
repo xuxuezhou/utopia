@@ -4,6 +4,7 @@ import { useStore, useCurrentUser } from '../lib/store'
 import {
   PLUS_BENEFITS, PLUS_EXCLUSIONS, PLUS_PRICE, PLUS_PROMISE,
   PRO_FEATURES, PRO_EXCLUSIONS, PRO_PRICE, FREE_CAPABILITIES,
+  type BenefitItem,
 } from '../lib/monetize'
 import { Modal, PlusBadge, toast } from '../components/ui'
 
@@ -15,6 +16,7 @@ export default function Plus() {
   const me = useCurrentUser()!
   const [cycle, setCycle] = useState<Cycle>('yearly')
   const [pay, setPay] = useState<'' | 'plus' | 'pro'>('')
+  const [editPro, setEditPro] = useState(false)
   const isPro = !!me.pro?.active
   const isPlus = !!me.plus?.active
 
@@ -116,19 +118,11 @@ export default function Plus() {
         </div>
       )}
 
-      {/* 权益详情 */}
+      {/* 权益详情(每项标注实际入口) */}
       <div>
         <h2 className="font-semibold mb-3">Plus 提供的便利(Pro 全部包含)</h2>
         <div className="grid sm:grid-cols-2 gap-2.5">
-          {PLUS_BENEFITS.map(b => (
-            <div key={b.title} className="card p-3.5 flex gap-3">
-              <span className="text-xl">{b.icon}</span>
-              <span>
-                <span className="block text-sm font-medium">{b.title}</span>
-                <span className="block text-xs text-ink-400 mt-0.5 leading-relaxed">{b.desc}</span>
-              </span>
-            </div>
-          ))}
+          {PLUS_BENEFITS.map(b => <BenefitCard key={b.title} b={b} />)}
         </div>
       </div>
 
@@ -136,28 +130,32 @@ export default function Plus() {
         <h2 className="font-semibold mb-1">Pro 附加的专业工具</h2>
         <p className="text-xs text-ink-400 mb-3">面向高频技能贡献者与社区组织者,在全部 Plus 权益之上:</p>
         <div className="grid sm:grid-cols-2 gap-2.5">
-          {PRO_FEATURES.map(f => (
-            <div key={f.title} className="card p-3.5 flex gap-3">
-              <span className="text-xl">{f.icon}</span>
-              <span>
-                <span className="block text-sm font-medium">{f.title}</span>
-                <span className="block text-xs text-ink-400 mt-0.5 leading-relaxed">{f.desc}</span>
-              </span>
-            </div>
-          ))}
+          {PRO_FEATURES.map(f => <BenefitCard key={f.title} b={f} />)}
         </div>
       </div>
 
-      {/* Pro 工作台(已开通) */}
+      {/* Pro 工作台(已开通):专业主页编辑 + 数据分析 */}
       {isPro && (
         <div className="card p-5 bg-gradient-to-br from-violet-50/60 to-white">
-          <div className="font-semibold text-sm">你的 Pro 专业主页 · {me.pro!.headline}</div>
-          <div className="text-xs text-ink-400 mt-2 space-y-1">
+          <div className="flex items-center justify-between">
+            <div className="font-semibold text-sm">你的 Pro 工作台</div>
+            <button className="btn-outline !py-1 !text-xs" onClick={() => setEditPro(true)}>编辑专业主页</button>
+          </div>
+          <div className="text-xs text-ink-500 mt-2.5 space-y-1">
+            <div>💼 {me.pro!.headline}</div>
             {me.pro!.weeklySlots.length > 0 && <div>🗓 可用时间:{me.pro!.weeklySlots.join(' / ')}</div>}
             {me.pro!.portfolio.length > 0 && <div>🖼 作品集:{me.pro!.portfolio.join(' · ')}</div>}
-            {me.pro!.autoReply && <div>💬 自动回复已开启</div>}
+            <div>💬 自动回复:{me.pro!.autoReply ? '已开启(新私信首条自动应答)' : '未设置'}</div>
           </div>
-          <p className="text-[11px] text-ink-300 mt-3">专业主页展示在你的个人页,内容可随时编辑(演示数据)。</p>
+          <div className="grid grid-cols-4 gap-2 mt-4 text-center">
+            {([['帮助次数', me.stats.helped], ['准时率', `${me.stats.onTimeRate}%`], ['愿再合作', `${me.stats.wouldRepeat}%`], ['平均响应', '2.1h']] as const).map(([k, v]) => (
+              <div key={k} className="bg-white/70 rounded-xl py-2.5">
+                <div className="text-sm font-semibold text-ink-900">{v}</div>
+                <div className="text-[10px] text-ink-400 mt-0.5">{k}</div>
+              </div>
+            ))}
+          </div>
+          <p className="text-[11px] text-ink-300 mt-3">专业主页展示在你的个人页;数据来自真实互助行为,Pro 只负责展示,不改变它们。</p>
         </div>
       )}
 
@@ -183,6 +181,8 @@ export default function Plus() {
         免费用户永远拥有完整互助闭环。身份认证始终免费 → <Link to="/trust" className="text-violet-600">信任与认证</Link> · 广告偏好随时可调 → <Link to="/safety" className="text-violet-600">安全中心</Link> · 订阅用现金支付,与积分完全无关
       </div>
 
+      {isPro && <EditProModal open={editPro} onClose={() => setEditPro(false)} />}
+
       <Modal open={!!pay} onClose={() => setPay('')} title="确认订阅(演示支付)">
         <p className="text-sm text-ink-500 mb-1">
           Utopia {pay === 'pro' ? 'Pro' : 'Plus'} · {cycle === 'yearly' ? '年付' : '月付'} ¥{pay === 'pro' ? PRO_PRICE[cycle] : PLUS_PRICE[cycle]}
@@ -196,5 +196,65 @@ export default function Plus() {
         }}>确认支付</button>
       </Modal>
     </div>
+  )
+}
+
+// 权益卡:标注功能的真实入口,规划中的项目如实标记
+function BenefitCard({ b }: { b: BenefitItem }) {
+  return (
+    <div className={`card p-3.5 flex gap-3 ${b.planned ? 'opacity-70' : ''}`}>
+      <span className="text-xl">{b.icon}</span>
+      <span className="min-w-0">
+        <span className="flex items-center gap-1.5 text-sm font-medium">
+          {b.title}
+          {b.planned && <span className="chip !py-0 !px-1.5 !text-[10px] bg-cream-100 text-ink-400">规划中</span>}
+        </span>
+        <span className="block text-xs text-ink-400 mt-0.5 leading-relaxed">{b.desc}</span>
+        {b.where && (
+          <Link to={b.where.to} className="block text-[11px] text-violet-600 mt-1">📍 {b.where.label}</Link>
+        )}
+      </span>
+    </div>
+  )
+}
+
+// Pro 专业主页编辑
+function EditProModal({ open, onClose }: { open: boolean; onClose: () => void }) {
+  const { actions } = useStore()
+  const me = useCurrentUser()!
+  const [headline, setHeadline] = useState(me.pro?.headline ?? '')
+  const [slots, setSlots] = useState((me.pro?.weeklySlots ?? []).join('、'))
+  const [portfolio, setPortfolio] = useState((me.pro?.portfolio ?? []).join('、'))
+  const [autoReply, setAutoReply] = useState(me.pro?.autoReply ?? '')
+  return (
+    <Modal open={open} onClose={onClose} title="编辑专业主页">
+      <div className="space-y-3">
+        <div>
+          <label className="label">专业主页标题</label>
+          <input className="input" value={headline} onChange={e => setHeadline(e.target.value)} placeholder="如:人像与活动摄影" />
+        </div>
+        <div>
+          <label className="label">可用时间(用「、」分隔)</label>
+          <input className="input" value={slots} onChange={e => setSlots(e.target.value)} placeholder="周三晚、周六全天" />
+        </div>
+        <div>
+          <label className="label">作品集条目(用「、」分隔)</label>
+          <input className="input" value={portfolio} onChange={e => setPortfolio(e.target.value)} placeholder="求职照 40+ 组、毕业季跟拍 12 场" />
+        </div>
+        <div>
+          <label className="label">私信自动回复(留空关闭)</label>
+          <textarea className="input" rows={2} value={autoReply} onChange={e => setAutoReply(e.target.value)} placeholder="你好!我一般 2 小时内回复…" />
+        </div>
+        <button className="btn-primary w-full" disabled={!headline.trim()} onClick={() => {
+          actions.updatePro({
+            headline: headline.trim(),
+            weeklySlots: slots.split(/[、,,]/).map(s => s.trim()).filter(Boolean),
+            portfolio: portfolio.split(/[、,,]/).map(s => s.trim()).filter(Boolean),
+            autoReply: autoReply.trim() || undefined,
+          })
+          toast('专业主页已更新'); onClose()
+        }}>保存</button>
+      </div>
+    </Modal>
   )
 }

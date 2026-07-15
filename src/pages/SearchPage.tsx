@@ -1,22 +1,31 @@
 import { useMemo, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { Search, ArrowLeft, X } from 'lucide-react'
-import { useStore } from '../lib/store'
+import { Search, ArrowLeft, X, SlidersHorizontal } from 'lucide-react'
+import { useStore, useCurrentUser } from '../lib/store'
+import { hasPlusBenefits } from '../lib/monetize'
 import { PostCard, TaskCard, UserRow } from '../components/cards'
-import { Empty } from '../components/ui'
-import { CATEGORY_META } from '../lib/types'
+import { Empty, toast } from '../components/ui'
+import { CATEGORY_META, type SavedSearch } from '../lib/types'
+
+type AdvFilters = SavedSearch['filters']
+const ADV_DEFAULT: AdvFilters = { online: 'all', minPoints: 0, maxPoints: 500, maxKm: 20 }
 
 const HOT = ['找网球搭档', '取快递', '英语练习', '陪聊', '拍照', '喂猫', '新生引导', '周末活动']
 const TABS = ['综合', '任务', '用户', '圈子', '分享'] as const
 const FILTERS = ['附近', '今天', '线上', '高积分', '已认证'] as const
 
 export default function SearchPage() {
-  const { state } = useStore()
+  const { state, actions } = useStore()
+  const me = useCurrentUser()
+  const member = hasPlusBenefits(me)
   const nav = useNavigate()
   const [q, setQ] = useState('')
   const [committed, setCommitted] = useState('')
   const [tab, setTab] = useState<typeof TABS[number]>('综合')
   const [filters, setFilters] = useState<string[]>([])
+  const [advOpen, setAdvOpen] = useState(false)
+  const [adv, setAdv] = useState<AdvFilters>(ADV_DEFAULT)
+  const advActive = member && (adv.online !== 'all' || adv.minPoints > 0 || adv.maxPoints < 500 || adv.maxKm < 20)
   const [history, setHistory] = useState<string[]>(() => {
     try { return JSON.parse(localStorage.getItem('utopia-search-history') ?? '[]') } catch { return [] }
   })
@@ -44,8 +53,14 @@ export default function SearchPage() {
     if (filters.includes('线上')) tasks = tasks.filter(t => t.online)
     if (filters.includes('高积分')) tasks = tasks.filter(t => t.points >= 100)
     if (filters.includes('已认证')) tasks = tasks.filter(t => (state.users.find(u => u.id === t.publisherId)?.level ?? 0) >= 1)
+    // 会员高级筛选(Plus/Pro)
+    if (advActive) {
+      if (adv.online === 'online') tasks = tasks.filter(t => t.online)
+      if (adv.online === 'offline') tasks = tasks.filter(t => !t.online)
+      tasks = tasks.filter(t => t.points >= adv.minPoints && t.points <= adv.maxPoints && (t.online || t.distanceKm <= adv.maxKm))
+    }
     return { tasks, users, circles, posts }
-  }, [committed, filters, state])
+  }, [committed, filters, state, advActive, adv])
 
   return (
     <div className="max-w-3xl mx-auto">
@@ -64,6 +79,20 @@ export default function SearchPage() {
 
       {!results ? (
         <div className="pt-4 space-y-6">
+          {member && (me?.savedSearches?.length ?? 0) > 0 && (
+            <div>
+              <div className="text-sm font-medium text-ink-900 mb-2.5">已保存的搜索 <span className="text-[10px] text-coral-500 font-semibold">Plus</span></div>
+              <div className="flex flex-wrap gap-2">
+                {me!.savedSearches!.map(ss => (
+                  <span key={ss.id} className="chip bg-coral-50 text-coral-600 !py-1.5 !px-3 inline-flex items-center gap-1.5">
+                    <button className="cursor-pointer" onClick={() => { setAdv(ss.filters); setAdvOpen(true); commit(ss.query || ss.name) }}>🔔 {ss.name}</button>
+                    <button className="cursor-pointer text-coral-300" onClick={() => actions.deleteSearch(ss.id)}><X size={12} /></button>
+                  </span>
+                ))}
+              </div>
+              <p className="text-[11px] text-ink-300 mt-2">符合条件的新任务发布时会即时通知你。</p>
+            </div>
+          )}
           {history.length > 0 && (
             <div>
               <div className="flex items-center justify-between mb-2.5">
@@ -107,12 +136,50 @@ export default function SearchPage() {
             ))}
           </div>
           {(tab === '任务' || tab === '综合') && (
-            <div className="flex gap-2 mb-4 overflow-x-auto no-scrollbar">
-              {FILTERS.map(f => (
-                <button key={f} onClick={() => setFilters(v => v.includes(f) ? v.filter(x => x !== f) : [...v, f])}
-                  className={`chip cursor-pointer !py-1.5 !px-3 shrink-0 ${filters.includes(f) ? 'bg-ink-900 text-white' : 'bg-cream-100 text-ink-500'}`}>{f}</button>
-              ))}
-            </div>
+            <>
+              <div className="flex gap-2 mb-4 overflow-x-auto no-scrollbar items-center">
+                {FILTERS.map(f => (
+                  <button key={f} onClick={() => setFilters(v => v.includes(f) ? v.filter(x => x !== f) : [...v, f])}
+                    className={`chip cursor-pointer !py-1.5 !px-3 shrink-0 ${filters.includes(f) ? 'bg-ink-900 text-white' : 'bg-cream-100 text-ink-500'}`}>{f}</button>
+                ))}
+                <button
+                  className={`chip cursor-pointer !py-1.5 !px-3 shrink-0 inline-flex items-center gap-1 ${advOpen || advActive ? 'bg-coral-500 text-white' : 'bg-cream-100 text-ink-500'}`}
+                  onClick={() => member ? setAdvOpen(v => !v) : toast('高级筛选是 Plus/Pro 会员功能')}>
+                  <SlidersHorizontal size={12} /> 高级筛选{!member && ' 🔒'}
+                </button>
+              </div>
+              {advOpen && member && (
+                <div className="card p-4 mb-4 space-y-3">
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
+                    <div>
+                      <label className="label">形式</label>
+                      <select className="input !py-1.5 !text-xs" value={adv.online} onChange={e => setAdv(a => ({ ...a, online: e.target.value as AdvFilters['online'] }))}>
+                        <option value="all">全部</option><option value="online">仅线上</option><option value="offline">仅线下</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="label">积分 ≥ {adv.minPoints}</label>
+                      <input type="range" min={0} max={300} step={10} value={adv.minPoints} onChange={e => setAdv(a => ({ ...a, minPoints: +e.target.value }))} className="w-full accent-coral-500" />
+                    </div>
+                    <div>
+                      <label className="label">积分 ≤ {adv.maxPoints}</label>
+                      <input type="range" min={50} max={500} step={10} value={adv.maxPoints} onChange={e => setAdv(a => ({ ...a, maxPoints: +e.target.value }))} className="w-full accent-coral-500" />
+                    </div>
+                    <div>
+                      <label className="label">距离 ≤ {adv.maxKm} km</label>
+                      <input type="range" min={1} max={20} value={adv.maxKm} onChange={e => setAdv(a => ({ ...a, maxKm: +e.target.value }))} className="w-full accent-coral-500" />
+                    </div>
+                  </div>
+                  <div className="flex gap-2">
+                    <button className="btn-outline !py-1.5 !text-xs" onClick={() => setAdv(ADV_DEFAULT)}>重置</button>
+                    <button className="btn-primary !py-1.5 !text-xs" onClick={() => {
+                      const name = prompt('给这组条件起个名字(命中的新任务会即时通知你):', committed || '我的搜索条件')
+                      if (name) { actions.saveSearch(name, committed, adv); toast('已保存,新任务命中时会通知你 🔔') }
+                    }}>💾 保存条件并订阅提醒</button>
+                  </div>
+                </div>
+              )}
+            </>
           )}
 
           {tab === '用户' ? (

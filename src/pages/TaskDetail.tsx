@@ -4,7 +4,7 @@ import { ArrowLeft, Calendar, Star, MapPin, Share2, Sparkles, Users, CircleCheck
 import { useStore, useCurrentUser, nowISO } from '../lib/store'
 import { TrustPassport, UserRow } from '../components/cards'
 import { Avatar, Empty, Modal, PromoTag, StatusBadge, TierBadge, VerifyDot, fmtDate, fmtTime, toast } from '../components/ui'
-import { activeBoost, boostEligibility, BOOST_PACKAGES } from '../lib/monetize'
+import { activeBoost, boostEligibility, hasPlusBenefits, BOOST_PACKAGES } from '../lib/monetize'
 import { CATEGORY_META, type Review, type Task } from '../lib/types'
 
 export default function TaskDetail() {
@@ -114,6 +114,13 @@ export default function TaskDetail() {
         {!task.online && <p className="text-[11px] text-ink-300 pt-1 border-t border-cream-300">仅显示大致位置,精确地点在匹配后按需告知 · {task.cancelPolicy}</p>}
         {task.riskTier !== 'T0' && task.riskTier !== 'T1' && <div className="pt-0.5"><TierBadge tier={task.riskTier} /></div>}
       </div>
+
+      {/* 日历同步(Plus/Pro):把匹配好的互助写入系统日历 */}
+      {participant && active && hasPlusBenefits(me) && (
+        <button className="mt-3 text-xs text-violet-600 cursor-pointer" onClick={() => downloadIcs(task)}>
+          📅 添加到日历(.ics)
+        </button>
+      )}
 
       {/* 推广标注与发布者加速入口 */}
       <TaskBoostRow task={task} isPublisher={isPublisher} />
@@ -273,6 +280,26 @@ export default function TaskDetail() {
       </Modal>
     </div>
   )
+}
+
+// ============ 日历同步(Plus/Pro 权益):生成 .ics 文件 ============
+function downloadIcs(task: Task) {
+  const p = (n: number) => String(n).padStart(2, '0')
+  const start = `${task.date.replace(/-/g, '')}T${task.startTime.replace(':', '')}00`
+  const endDate = new Date(`${task.date}T${task.startTime}:00`)
+  endDate.setMinutes(endDate.getMinutes() + task.durationMin)
+  const end = `${endDate.getFullYear()}${p(endDate.getMonth() + 1)}${p(endDate.getDate())}T${p(endDate.getHours())}${p(endDate.getMinutes())}00`
+  const ics = [
+    'BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//Utopia//Mutual Aid//CN', 'BEGIN:VEVENT',
+    `UID:${task.id}@utopia`, `DTSTART:${start}`, `DTEND:${end}`,
+    `SUMMARY:Utopia 互助:${task.title}`, `LOCATION:${task.online ? '线上' : task.locationText}`,
+    `DESCRIPTION:${task.doneCriteria} · ${task.points} pt`, 'END:VEVENT', 'END:VCALENDAR',
+  ].join('\r\n')
+  const a = document.createElement('a')
+  a.href = 'data:text/calendar;charset=utf-8,' + encodeURIComponent(ics)
+  a.download = `utopia-${task.id}.ics`
+  a.click()
+  toast('已生成日历文件')
 }
 
 // ============ 推广标注 + 发布者加速入口 ============

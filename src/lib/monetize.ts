@@ -13,19 +13,24 @@ export function hasPlusBenefits(user?: User | null): boolean {
   return !!(user?.plus?.active || user?.pro?.active)
 }
 
-// Plus 提供的只有便利
-export const PLUS_BENEFITS: { icon: string; title: string; desc: string }[] = [
-  { icon: '🧹', title: '几乎无广告', desc: '移除信息流中的绝大部分本地广告' },
-  { icon: '🔍', title: '高级搜索与筛选', desc: '按积分区间、距离、时间段、认证技能组合筛选' },
-  { icon: '💾', title: '保存搜索条件', desc: '常用的筛选组合一键复用' },
-  { icon: '🔔', title: '新任务即时提醒', desc: '符合你保存条件的新任务第一时间通知' },
-  { icon: '📅', title: '日历同步', desc: '匹配成功的任务自动写入系统日历' },
-  { icon: '📋', title: '常用任务模板', desc: '每周网球、定期取快递……一键再次发布' },
-  { icon: '📝', title: '草稿与预约发布', desc: '写好后定时发布,不用掐点' },
-  { icon: '📊', title: '任务曝光与申请数据', desc: '看到自己任务的曝光、访问和申请漏斗' },
-  { icon: '🎨', title: '更多主页定制', desc: '更多个人主页背景与排版选项' },
-  { icon: '🏘', title: '多社区管理', desc: '同时管理多个圈子的动态与活动' },
-  { icon: '🚀', title: '每月 3 次免费任务加速', desc: '相当于普通用户免费额度的 3 倍' },
+// Plus 提供的只有便利;where 指向功能实际所在的页面,planned 表示演示版尚未开放
+export interface BenefitItem {
+  icon: string; title: string; desc: string
+  where?: { to: string; label: string }
+  planned?: boolean
+}
+export const PLUS_BENEFITS: BenefitItem[] = [
+  { icon: '🧹', title: '几乎无广告', desc: '移除信息流中的绝大部分本地广告', where: { to: '/', label: '首页信息流(自动生效)' } },
+  { icon: '🔍', title: '高级搜索与筛选', desc: '按形式、积分区间、距离组合筛选', where: { to: '/search', label: '搜索结果页 →「高级筛选」' } },
+  { icon: '💾', title: '保存搜索条件', desc: '常用的筛选组合一键复用', where: { to: '/search', label: '高级筛选 →「保存条件」' } },
+  { icon: '🔔', title: '新任务即时提醒', desc: '符合你保存条件的新任务第一时间通知', where: { to: '/search', label: '保存搜索条件后自动生效' } },
+  { icon: '📅', title: '日历同步', desc: '匹配成功的任务导出到系统日历(.ics)', where: { to: '/mytasks', label: '进行中任务详情 →「添加到日历」' } },
+  { icon: '📋', title: '常用任务模板', desc: '每周网球、定期取快递……一键再次发布', where: { to: '/publish', label: '发布页 →「保存为模板」' } },
+  { icon: '📝', title: '草稿与预约发布', desc: '写好后定时发布,不用掐点', where: { to: '/publish', label: '发布页 →「存草稿 / 预约」' } },
+  { icon: '📊', title: '任务曝光与申请数据', desc: '看到自己任务的曝光、访问和申请漏斗', where: { to: '/promo', label: '推广效果页' } },
+  { icon: '🚀', title: '每月 3 次免费任务加速', desc: '相当于普通用户免费额度的 3 倍', where: { to: '/mytasks', label: '自己的任务详情 →「任务加速」' } },
+  { icon: '🎨', title: '更多主页定制', desc: '更多个人主页背景与排版选项', planned: true },
+  { icon: '🏘', title: '多社区管理', desc: '同时管理多个圈子的动态与活动', planned: true },
 ]
 
 // Plus 明确不提供的(反向承诺,页面必须展示)
@@ -146,15 +151,15 @@ export const AD_PLACEMENT_FORBIDDEN = [
 
 export const PRO_PRICE = { monthly: 25, yearly: 198 } // ¥,演示定价,含全部 Plus 权益
 
-export const PRO_FEATURES: { icon: string; title: string; desc: string }[] = [
-  { icon: '💼', title: '专业技能主页', desc: '展示技能、经验与服务范围的专属版块' },
-  { icon: '🗓', title: '可用时间表', desc: '公开你每周可提供帮助的时间段' },
-  { icon: '🖼', title: '作品集', desc: '摄影、辅导、维修等成果展示' },
-  { icon: '📥', title: '任务管理', desc: '批量管理申请、进行中与历史任务' },
-  { icon: '💬', title: '自动回复', desc: '常见问题自动应答,不错过任何请求' },
-  { icon: '📅', title: '日历同步', desc: '所有互助安排同步到系统日历' },
-  { icon: '📈', title: '数据分析', desc: '响应速度、完成率与合作趋势' },
-  { icon: '🎪', title: '社区活动工具', desc: '报名表、签到与活动回顾' },
+export const PRO_FEATURES: BenefitItem[] = [
+  { icon: '💼', title: '专业技能主页', desc: '展示技能、经验与服务范围的专属版块', where: { to: '/plus', label: '本页 Pro 工作台编辑,展示在个人主页' } },
+  { icon: '🗓', title: '可用时间表', desc: '公开你每周可提供帮助的时间段', where: { to: '/plus', label: 'Pro 工作台 →「编辑专业主页」' } },
+  { icon: '🖼', title: '作品集', desc: '摄影、辅导、维修等成果展示', where: { to: '/plus', label: 'Pro 工作台 →「编辑专业主页」' } },
+  { icon: '📥', title: '任务管理', desc: '集中管理申请、进行中与历史任务', where: { to: '/mytasks', label: '我的任务' } },
+  { icon: '💬', title: '自动回复', desc: '新私信首条自动应答,不错过任何请求', where: { to: '/plus', label: 'Pro 工作台设置,私信中生效' } },
+  { icon: '📅', title: '日历同步', desc: '所有互助安排导出系统日历(.ics)', where: { to: '/mytasks', label: '进行中任务详情 →「添加到日历」' } },
+  { icon: '📈', title: '数据分析', desc: '帮助次数、准时率、合作意愿与响应速度', where: { to: '/plus', label: '本页 Pro 工作台' } },
+  { icon: '🎪', title: '社区活动工具', desc: '报名表、签到与活动回顾', planned: true },
 ]
 
 export const PRO_EXCLUSIONS: string[] = [
