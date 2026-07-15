@@ -24,13 +24,12 @@ export const PLUS_BENEFITS: BenefitItem[] = [
   { icon: '🔍', title: '高级搜索与筛选', desc: '按形式、积分区间、距离组合筛选', where: { to: '/search', label: '搜索结果页 →「高级筛选」' } },
   { icon: '💾', title: '保存搜索条件', desc: '常用的筛选组合一键复用', where: { to: '/search', label: '高级筛选 →「保存条件」' } },
   { icon: '🔔', title: '新任务即时提醒', desc: '符合你保存条件的新任务第一时间通知', where: { to: '/search', label: '保存搜索条件后自动生效' } },
-  { icon: '📅', title: '日历同步', desc: '匹配成功的任务导出到系统日历(.ics)', where: { to: '/mytasks', label: '进行中任务详情 →「添加到日历」' } },
   { icon: '📋', title: '常用任务模板', desc: '每周网球、定期取快递……一键再次发布', where: { to: '/publish', label: '发布页 →「保存为模板」' } },
   { icon: '📝', title: '草稿与预约发布', desc: '写好后定时发布,不用掐点', where: { to: '/publish', label: '发布页 →「存草稿 / 预约」' } },
   { icon: '📊', title: '任务曝光与申请数据', desc: '看到自己任务的曝光、访问和申请漏斗', where: { to: '/promo', label: '推广效果页' } },
   { icon: '🚀', title: '每月 3 次免费任务加速', desc: '相当于普通用户免费额度的 3 倍', where: { to: '/mytasks', label: '自己的任务详情 →「任务加速」' } },
-  { icon: '🎨', title: '更多主页定制', desc: '更多个人主页背景与排版选项', planned: true },
-  { icon: '🏘', title: '多社区管理', desc: '同时管理多个圈子的动态与活动', planned: true },
+  { icon: '🎨', title: '主页装扮', desc: '为个人主页选择专属签名色背景', where: { to: '/user/me', label: '个人主页 →「主页装扮」' } },
+  { icon: '🏘', title: '多社区管理', desc: '集中管理加入的圈子,设置主圈子或退出', where: { to: '/circles', label: '圈子页 →「我的圈子管理」' } },
 ]
 
 // Plus 明确不提供的(反向承诺,页面必须展示)
@@ -49,7 +48,7 @@ export const PLUS_PROMISE =
 // 免费用户的完整能力(页面展示用)
 export const FREE_CAPABILITIES: string[] = [
   '浏览全部内容和任务', '发布和认领任务', '基础匹配推荐', '站内聊天',
-  '身份认证(始终免费)', '完整积分系统', '举报、屏蔽、申诉与全部安全功能',
+  '身份认证(始终免费)', '完整积分系统', '内置日历与 .ics 导出', '举报、屏蔽、申诉与全部安全功能',
 ]
 
 // ---------- 任务加速 ----------
@@ -157,9 +156,8 @@ export const PRO_FEATURES: BenefitItem[] = [
   { icon: '🖼', title: '作品集', desc: '摄影、辅导、维修等成果展示', where: { to: '/plus', label: 'Pro 工作台 →「编辑专业主页」' } },
   { icon: '📥', title: '任务管理', desc: '集中管理申请、进行中与历史任务', where: { to: '/mytasks', label: '我的任务' } },
   { icon: '💬', title: '自动回复', desc: '新私信首条自动应答,不错过任何请求', where: { to: '/plus', label: 'Pro 工作台设置,私信中生效' } },
-  { icon: '📅', title: '日历同步', desc: '所有互助安排导出系统日历(.ics)', where: { to: '/mytasks', label: '进行中任务详情 →「添加到日历」' } },
   { icon: '📈', title: '数据分析', desc: '帮助次数、准时率、合作意愿与响应速度', where: { to: '/plus', label: '本页 Pro 工作台' } },
-  { icon: '🎪', title: '社区活动工具', desc: '报名表、签到与活动回顾', planned: true },
+  { icon: '🎪', title: '社区活动工具', desc: '活动报名名单与现场签到管理', where: { to: '/', label: '活动笔记详情 → 报名与签到(组织者)' } },
 ]
 
 export const PRO_EXCLUSIONS: string[] = [

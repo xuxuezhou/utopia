@@ -11,7 +11,7 @@ import { buildSeedState } from '../data/seed'
 
 const STORAGE_KEY = 'utopia-state-v1'
 // 持久化结构版本:与 localStorage 中的状态不匹配时重建种子数据
-const SCHEMA_VERSION = 4
+const SCHEMA_VERSION = 5
 
 let seq = 1000
 export function genId(prefix: string): string {
@@ -836,6 +836,57 @@ function buildActions(setState: (fn: (s: AppState) => AppState) => void, getStat
       mutate(d => {
         const u = findUser(d, d.currentUserId!)
         if (u?.taskDrafts) u.taskDrafts = u.taskDrafts.filter(t => t.id !== id)
+      })
+    },
+    // Plus 主页装扮:签名色(undefined 恢复默认)
+    setProfileTheme(hue?: number) {
+      mutate(d => {
+        const u = findUser(d, d.currentUserId!)
+        if (u) u.profileTheme = hue === undefined ? undefined : { hue }
+      })
+    },
+    // Plus 多社区管理
+    leaveCommunity(cid: string) {
+      mutate(d => {
+        const u = findUser(d, d.currentUserId!)
+        if (!u || !u.communityIds.includes(cid)) return
+        u.communityIds = u.communityIds.filter(x => x !== cid)
+        const c = d.communities.find(x => x.id === cid)
+        if (c) c.memberCount = Math.max(0, c.memberCount - 1)
+      })
+    },
+    setPrimaryCommunity(cid: string) {
+      mutate(d => {
+        const u = findUser(d, d.currentUserId!)
+        if (!u || !u.communityIds.includes(cid)) return
+        u.communityIds = [cid, ...u.communityIds.filter(x => x !== cid)]
+      })
+    },
+    // 社区活动:报名(所有人)与签到(Pro 组织者)
+    toggleAttend(postId: string) {
+      mutate(d => {
+        const p = d.posts.find(x => x.id === postId)
+        if (!p || p.kind !== 'event') return
+        if (!p.attendees) p.attendees = []
+        const uid = d.currentUserId!
+        const i = p.attendees.indexOf(uid)
+        if (i >= 0) {
+          p.attendees.splice(i, 1)
+          if (p.checkedIn) p.checkedIn = p.checkedIn.filter(x => x !== uid)
+        } else {
+          p.attendees.push(uid)
+          if (p.authorId !== uid) notify(d, p.authorId, '🙋', '有人报名了你的活动', `「${p.title}」新增一位报名者。`, `/post/${p.id}`)
+        }
+      })
+    },
+    toggleCheckIn(postId: string, userId: string) {
+      mutate(d => {
+        const p = d.posts.find(x => x.id === postId)
+        if (!p || p.authorId !== d.currentUserId) return
+        if (!p.checkedIn) p.checkedIn = []
+        const i = p.checkedIn.indexOf(userId)
+        if (i >= 0) p.checkedIn.splice(i, 1)
+        else p.checkedIn.push(userId)
       })
     },
 

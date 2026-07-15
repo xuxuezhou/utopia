@@ -4,7 +4,7 @@ import { ArrowLeft, Calendar, Star, MapPin, Share2, Sparkles, Users, CircleCheck
 import { useStore, useCurrentUser, nowISO } from '../lib/store'
 import { TrustPassport, UserRow } from '../components/cards'
 import { Avatar, Empty, Modal, PromoTag, StatusBadge, TierBadge, VerifyDot, fmtDate, fmtTime, toast } from '../components/ui'
-import { activeBoost, boostEligibility, hasPlusBenefits, BOOST_PACKAGES } from '../lib/monetize'
+import { activeBoost, boostEligibility, BOOST_PACKAGES } from '../lib/monetize'
 import { CATEGORY_META, type Review, type Task } from '../lib/types'
 
 export default function TaskDetail() {
@@ -115,11 +115,12 @@ export default function TaskDetail() {
         {task.riskTier !== 'T0' && task.riskTier !== 'T1' && <div className="pt-0.5"><TierBadge tier={task.riskTier} /></div>}
       </div>
 
-      {/* 日历同步(Plus/Pro):把匹配好的互助写入系统日历 */}
-      {participant && active && hasPlusBenefits(me) && (
-        <button className="mt-3 text-xs text-violet-600 cursor-pointer" onClick={() => downloadIcs(task)}>
-          📅 添加到日历(.ics)
-        </button>
+      {/* 日历同步(免费):把匹配好的互助写入系统日历 */}
+      {participant && active && (
+        <div className="mt-3 flex items-center gap-3 text-xs">
+          <button className="text-violet-600 cursor-pointer" onClick={() => downloadIcs(task)}>📅 添加到日历(.ics)</button>
+          <Link to="/calendar" className="text-ink-400">查看我的日历 →</Link>
+        </div>
       )}
 
       {/* 推广标注与发布者加速入口 */}

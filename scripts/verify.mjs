@@ -385,11 +385,56 @@ try {
   text = await bodyText(page)
   ok('会员功能: Pro 私信自动回复生效', text.includes('自动回复'))
 
-  // 订阅页应标注每项权益入口
+  // 订阅页应标注每项权益入口(所有权益均已实装,不应再有「规划中」)
   await page.goto(`${BASE}/#/plus`, { waitUntil: 'networkidle0' })
   await sleep(400)
   text = await bodyText(page)
-  ok('会员功能: 订阅页标注权益入口与规划中', text.includes('高级筛选」') && text.includes('规划中'))
+  ok('会员功能: 订阅页标注权益入口且无规划中', text.includes('高级筛选」') && text.includes('主页装扮') && !text.includes('规划中'))
+
+  // ---------- 搜索页只有一个搜索框 ----------
+  await page.goto(`${BASE}/#/search`, { waitUntil: 'networkidle0' })
+  await sleep(400)
+  const searchBars = await page.evaluate(() => ({
+    topBarBtn: [...document.querySelectorAll('button')].filter(b => b.textContent.includes('搜索任务、用户或社区')).length,
+    inputs: document.querySelectorAll('input[placeholder*="搜索任务"]').length,
+  }))
+  ok('搜索页只有一个搜索框', searchBars.topBarBtn === 0 && searchBars.inputs === 1, JSON.stringify(searchBars))
+
+  // ---------- 内置日历(免费) ----------
+  await page.goto(`${BASE}/#/calendar`, { waitUntil: 'networkidle0' })
+  await sleep(500)
+  text = await bodyText(page)
+  ok('内置日历渲染(免费)', text.includes('我的日历') && text.includes('即将到来') && text.includes('导出 .ics'))
+
+  // ---------- 社区活动:报名 + Pro 签到 ----------
+  await page.goto(`${BASE}/#/post/p13`, { waitUntil: 'networkidle0' })
+  await sleep(500)
+  await clickByText(page, 'button', '报名参加')
+  await sleep(500)
+  const attended = await page.evaluate(() => {
+    const s = JSON.parse(localStorage.getItem('utopia-state-v1'))
+    return s.posts.find(p => p.id === 'p13')?.attendees?.includes(s.currentUserId)
+  })
+  ok('社区活动: 报名成功', !!attended)
+  // p12 的组织者是 u2(Pro),签到名单存在于种子数据
+  const checkin = await page.evaluate(() => {
+    const s = JSON.parse(localStorage.getItem('utopia-state-v1'))
+    const p = s.posts.find(p => p.id === 'p12')
+    return { att: p?.attendees?.length ?? 0, chk: p?.checkedIn?.length ?? 0 }
+  })
+  ok('社区活动: Pro 组织者签到数据就绪', checkin.att >= 4 && checkin.chk >= 1, JSON.stringify(checkin))
+
+  // ---------- 主页装扮(Plus) ----------
+  await page.goto(`${BASE}/#/user/me`, { waitUntil: 'networkidle0' })
+  await sleep(500)
+  text = await bodyText(page)
+  ok('主页装扮入口(会员)与 /user/me 路由', text.includes('主页装扮'))
+
+  // ---------- 多社区管理(Plus) ----------
+  await page.goto(`${BASE}/#/circles`, { waitUntil: 'networkidle0' })
+  await sleep(400)
+  text = await bodyText(page)
+  ok('多社区管理面板(会员)', text.includes('我的圈子管理') && text.includes('主圈子'))
 
   // 截图
   await page.goto(`${BASE}/#/`, { waitUntil: 'networkidle0' }); await sleep(600)

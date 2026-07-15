@@ -80,6 +80,7 @@ export interface User {
   savedSearches?: SavedSearch[]
   taskTemplates?: { id: string; name: string; text: string }[]
   taskDrafts?: { id: string; text: string; scheduledAt?: string; createdAt: string }[]
+  profileTheme?: { hue: number }   // Plus 主页装扮:签名色(无 bgUrl 时作为主页背景渐变)
 }
 
 // Plus:保存的搜索条件(命中的新任务会即时通知)
@@ -283,6 +284,8 @@ export interface ContentPost {
   comments: { id: string; userId: string; text: string; createdAt: string }[]
   createdAt: string
   tags: string[]
+  attendees?: string[]      // 活动报名(kind=event;所有人可报名)
+  checkedIn?: string[]      // 现场签到(Pro 组织者管理)
 }
 
 export interface Notification {

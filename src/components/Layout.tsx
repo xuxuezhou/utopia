@@ -47,6 +47,7 @@ export default function Layout() {
           {more && (
             <div className="absolute bottom-12 left-2 w-52 pop border border-cream-200 p-1.5 z-50" onClick={() => setMore(false)}>
               <Link to="/mytasks" className="block px-3 py-2 rounded-lg hover:bg-cream-50 text-sm">我的任务</Link>
+              <Link to="/calendar" className="block px-3 py-2 rounded-lg hover:bg-cream-50 text-sm">我的日历</Link>
               <Link to="/points" className="block px-3 py-2 rounded-lg hover:bg-cream-50 text-sm">积分中心</Link>
               <Link to="/trust" className="block px-3 py-2 rounded-lg hover:bg-cream-50 text-sm">信任与认证</Link>
               <Link to="/safety" className="block px-3 py-2 rounded-lg hover:bg-cream-50 text-sm">安全中心</Link>
@@ -69,15 +70,17 @@ export default function Layout() {
         )}
       </aside>
 
-      {/* 桌面顶部搜索(仅内容页) */}
-      <div className="hidden md:block fixed top-0 left-56 right-0 h-14 bg-white/95 backdrop-blur z-30 border-b border-cream-100">
-        <div className="max-w-[1200px] mx-auto h-full flex items-center px-6">
-          <button className="flex items-center gap-2 w-80 bg-cream-100 rounded-full px-4 py-2 text-sm text-ink-300 cursor-pointer hover:bg-cream-200 transition"
-            onClick={() => nav('/search')}>
-            <Search size={16} strokeWidth={1.8} /> 搜索任务、用户或社区
-          </button>
+      {/* 桌面顶部搜索(仅内容页;搜索页自带搜索框,避免重复) */}
+      {loc.pathname !== '/search' && (
+        <div className="hidden md:block fixed top-0 left-56 right-0 h-14 bg-white/95 backdrop-blur z-30 border-b border-cream-100">
+          <div className="max-w-[1200px] mx-auto h-full flex items-center px-6">
+            <button className="flex items-center gap-2 w-80 bg-cream-100 rounded-full px-4 py-2 text-sm text-ink-300 cursor-pointer hover:bg-cream-200 transition"
+              onClick={() => nav('/search')}>
+              <Search size={16} strokeWidth={1.8} /> 搜索任务、用户或社区
+            </button>
+          </div>
         </div>
-      </div>
+      )}
 
       <main className={`md:pl-56 pt-[var(--safe-top)] ${hideBottomNav ? 'pb-[calc(6rem+var(--safe-bottom))]' : 'pb-[calc(5rem+var(--safe-bottom))]'} md:pb-10 md:pt-14`}>
         <div className="max-w-[1200px] mx-auto px-3 md:px-6 pt-2 md:pt-5">

@@ -163,6 +163,7 @@ export default function Feed() {
 export function PostDetail() {
   const { id } = useParams()
   const { state, actions } = useStore()
+  const me = useCurrentUser()!
   const nav = useNavigate()
   const [comment, setComment] = useState('')
   const post = state.posts.find(p => p.id === id)
@@ -211,6 +212,9 @@ export function PostDetail() {
         </Link>
       )}
 
+      {/* 社区活动:报名(所有人)+ 签到管理(Pro 组织者) */}
+      {post.kind === 'event' && <EventPanel post={post} me={me} />}
+
       {/* 互动行 */}
       <div className="flex items-center gap-6 py-4 border-b border-cream-200 text-sm text-ink-500">
         <button className="flex items-center gap-1.5 cursor-pointer" onClick={() => actions.toggleReaction(post.id, 'like')}>
@@ -248,6 +252,58 @@ export function PostDetail() {
           <button className="btn-primary shrink-0" disabled={!comment.trim()} onClick={() => { actions.addComment(post.id, comment.trim()); setComment('') }}>发送</button>
         </div>
       </div>
+    </div>
+  )
+}
+
+// 社区活动面板:报名对所有人开放;报名名单与签到是 Pro 组织者工具
+function EventPanel({ post, me }: { post: ContentPost; me: NonNullable<ReturnType<typeof useCurrentUser>> }) {
+  const { state, actions } = useStore()
+  const attendees = post.attendees ?? []
+  const checkedIn = post.checkedIn ?? []
+  const joined = attendees.includes(me.id)
+  const isOrganizer = post.authorId === me.id
+
+  return (
+    <div className="mt-4 bg-cream-50 rounded-2xl p-4">
+      <div className="flex items-center gap-2.5">
+        <div className="flex -space-x-2">
+          {attendees.slice(0, 5).map(uid => <Avatar key={uid} user={state.users.find(u => u.id === uid)} size={26} link={false} />)}
+        </div>
+        <span className="text-sm text-ink-500">{attendees.length > 0 ? `${attendees.length} 人已报名` : '还没有人报名,来做第一个吧'}</span>
+        <span className="flex-1" />
+        {!isOrganizer && (
+          <button className={`!py-1.5 !px-4 !text-[13px] ${joined ? 'btn bg-cream-200 text-ink-500' : 'btn-primary'}`}
+            onClick={() => { actions.toggleAttend(post.id); toast(joined ? '已取消报名' : '报名成功 🙌') }}>
+            {joined ? '已报名' : '报名参加'}
+          </button>
+        )}
+      </div>
+      {isOrganizer && attendees.length > 0 && (
+        me.pro?.active ? (
+          <div className="mt-3 pt-3 border-t border-cream-200">
+            <div className="text-xs text-ink-400 mb-2">报名名单与签到 <span className="chip !py-0 !px-1.5 !text-[10px] bg-ink-900 text-white">Pro</span> · 已签到 {checkedIn.length}/{attendees.length}</div>
+            <div className="space-y-1.5">
+              {attendees.map(uid => {
+                const u = state.users.find(x => x.id === uid)
+                const ok = checkedIn.includes(uid)
+                return (
+                  <label key={uid} className="flex items-center gap-2.5 cursor-pointer text-sm">
+                    <input type="checkbox" className="accent-leaf-500 w-4 h-4" checked={ok} onChange={() => actions.toggleCheckIn(post.id, uid)} />
+                    <Avatar user={u} size={24} link={false} />
+                    <span className={ok ? 'text-ink-400 line-through' : 'text-ink-700'}>{u?.name}</span>
+                    {ok && <span className="text-[11px] text-leaf-600">✓ 已签到</span>}
+                  </label>
+                )
+              })}
+            </div>
+          </div>
+        ) : (
+          <p className="text-[11px] text-ink-300 mt-3 pt-3 border-t border-cream-200">
+            🔒 报名名单与现场签到是 <Link to="/plus" className="text-violet-600">Utopia Pro</Link> 的活动组织工具。
+          </p>
+        )
+      )}
     </div>
   )
 }

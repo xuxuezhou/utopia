@@ -22,6 +22,7 @@ import Plus from './pages/Plus'
 import Boost from './pages/Boost'
 import Promo from './pages/Promo'
 import Org from './pages/Org'
+import CalendarPage from './pages/Calendar'
 
 function Guard({ children }: { children: React.ReactNode }) {
   const { state } = useStore()
@@ -46,6 +47,7 @@ function App() {
           <Route path="/messages" element={<Messages />} />
           <Route path="/messages/:id" element={<Messages />} />
           <Route path="/points" element={<Points />} />
+          <Route path="/calendar" element={<CalendarPage />} />
           <Route path="/user/:id" element={<Profile />} />
           <Route path="/trust" element={<Trust />} />
           <Route path="/circles" element={<Circles />} />

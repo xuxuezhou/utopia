@@ -65,7 +65,7 @@ export default function SearchPage() {
   return (
     <div className="max-w-3xl mx-auto">
       {/* 搜索框 */}
-      <div className="sticky top-[var(--safe-top)] md:top-14 z-30 bg-white -mx-3 px-3 py-2 flex items-center gap-2">
+      <div className="sticky top-[var(--safe-top)] md:top-0 z-30 bg-white -mx-3 px-3 py-2 flex items-center gap-2">
         <button className="p-1.5 text-ink-700 cursor-pointer md:hidden" onClick={() => nav(-1)}><ArrowLeft size={20} strokeWidth={1.8} /></button>
         <div className="flex-1 flex items-center gap-2 bg-cream-100 rounded-full px-4 py-2">
           <Search size={16} className="text-ink-300" strokeWidth={1.8} />

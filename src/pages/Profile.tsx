@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { Settings, ChevronRight, Camera, ImagePlus } from 'lucide-react'
 import { useStore, useCurrentUser } from '../lib/store'
+import { hasPlusBenefits } from '../lib/monetize'
 import { PostCard, TaskCard, TrustPassport } from '../components/cards'
 import { Avatar, Empty, Modal, PlusBadge, VerifyDot, pickImage, toast } from '../components/ui'
 import { ReportModal } from './TaskDetail'
@@ -13,14 +14,16 @@ function hashNum(id: string, mod: number, min: number) {
 }
 
 export default function Profile() {
-  const { id } = useParams()
+  const { id: rawId } = useParams()
   const { state, actions } = useStore()
   const me = useCurrentUser()!
   const nav = useNavigate()
   const [report, setReport] = useState(false)
   const [trust, setTrust] = useState(false)
   const [menu, setMenu] = useState(false)
+  const [theme, setTheme] = useState(false)
   const [tab, setTab] = useState<'share' | 'active' | 'done' | 'saved'>('share')
+  const id = rawId === 'me' ? me.id : rawId   // 支持 /user/me
   const user = state.users.find(u => u.id === id)
 
   const isMe = id === me.id
@@ -36,7 +39,9 @@ export default function Profile() {
   const followCount = isMe ? state.following.filter(f => f.startsWith('u')).length + 5 : hashNum(user.id, 160, 12)
   const fansCount = hashNum(user.id + 'f', 220, 8) + user.stats.helped
 
-  const community = state.communities.find(c => user.communityIds.includes(c.id))
+  // 主圈子 = 用户圈子列表的第一个(可在圈子页「我的圈子管理」中调整)
+  const community = state.communities.find(c => c.id === user.communityIds[0])
+    ?? state.communities.find(c => user.communityIds.includes(c.id))
 
   const changeAvatar = async () => {
     const url = await pickImage(320)
@@ -49,12 +54,20 @@ export default function Profile() {
 
   return (
     <div className="max-w-3xl mx-auto pb-10">
-      {/* 主页背景 */}
-      {(user.bgUrl || isMe) && (
+      {/* 主页背景(Plus 主页装扮:签名色渐变) */}
+      {(user.bgUrl || isMe || user.profileTheme) && (
         <div className="relative -mx-3 md:mx-0 -mt-2 md:mt-0 md:rounded-2xl overflow-hidden">
           {user.bgUrl
             ? <img src={user.bgUrl} alt="" className="w-full h-36 md:h-48 object-cover" />
-            : <div className="w-full h-24 md:h-32 bg-gradient-to-br from-coral-50 via-cream-100 to-violet-50" />}
+            : user.profileTheme
+              ? <div className="w-full h-24 md:h-32" style={{ background: `linear-gradient(135deg, oklch(0.93 0.06 ${user.profileTheme.hue}), oklch(0.97 0.02 ${(user.profileTheme.hue + 40) % 360}), oklch(0.9 0.08 ${(user.profileTheme.hue + 320) % 360}))` }} />
+              : <div className="w-full h-24 md:h-32 bg-gradient-to-br from-coral-50 via-cream-100 to-violet-50" />}
+          {isMe && (
+            <button className="absolute left-3 bottom-3 chip bg-black/40 text-white backdrop-blur !py-1.5 !px-3 cursor-pointer"
+              onClick={() => hasPlusBenefits(me) ? setTheme(true) : toast('主页装扮是 Plus / Pro 会员功能')}>
+              🎨 主页装扮{!hasPlusBenefits(me) && ' 🔒'}
+            </button>
+          )}
           {isMe && (
             <button className="absolute right-3 bottom-3 chip bg-black/40 text-white backdrop-blur !py-1.5 !px-3 cursor-pointer"
               onClick={changeBg}>
@@ -225,6 +238,22 @@ export default function Profile() {
         <button className="fixed right-4 bottom-[calc(5rem+var(--safe-bottom))] md:bottom-8 w-9 h-9 rounded-full bg-white border border-cream-300 text-ink-400 cursor-pointer z-30" onClick={() => setMenu(true)}>⋯</button>
       )}
       <ReportModal open={report} onClose={() => setReport(false)} targetType="user" targetId={user.id} />
+
+      {/* Plus 主页装扮:签名色 */}
+      <Modal open={theme} onClose={() => setTheme(false)} title="主页装扮 · 签名色">
+        <p className="text-xs text-ink-400 mb-4">选择一个签名色作为主页背景(上传了背景图时以图片优先)。</p>
+        <div className="grid grid-cols-5 gap-3 mb-4">
+          {[16, 40, 90, 140, 205, 260, 300, 340, 60].map(h => (
+            <button key={h} aria-label={`色相 ${h}`}
+              className={`h-12 rounded-xl cursor-pointer transition ring-offset-2 ${me.profileTheme?.hue === h ? 'ring-2 ring-ink-900' : 'hover:scale-105'}`}
+              style={{ background: `linear-gradient(135deg, oklch(0.93 0.06 ${h}), oklch(0.9 0.08 ${(h + 320) % 360}))` }}
+              onClick={() => { actions.setProfileTheme(h); toast('签名色已更新') }} />
+          ))}
+          <button className={`h-12 rounded-xl cursor-pointer bg-gradient-to-br from-coral-50 via-cream-100 to-violet-50 border border-cream-300 text-[10px] text-ink-400 ${!me.profileTheme ? 'ring-2 ring-ink-900 ring-offset-2' : ''}`}
+            onClick={() => { actions.setProfileTheme(undefined); toast('已恢复默认') }}>默认</button>
+        </div>
+        <button className="btn-primary w-full" onClick={() => setTheme(false)}>完成</button>
+      </Modal>
     </div>
   )
 }

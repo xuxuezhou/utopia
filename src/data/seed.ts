@@ -1332,6 +1332,7 @@ export function buildSeedState(): AppState {
         { id: 'p12-c1', userId: 'u19', text: '上午跑单路过,捡半小时也算我一个。', createdAt: '2026-07-08T12:00:00' },
       ],
       createdAt: '2026-07-07T16:00:00', tags: ['社区公益', '梧桐街区'],
+      attendees: ['u19', 'u10', 'u14', 'u5'], checkedIn: ['u19'],
     },
     {
       id: 'p13', authorId: 'u8', kind: 'event',
@@ -1344,6 +1345,7 @@ export function buildSeedState(): AppState {
         { id: 'p13-c2', userId: 'u6', text: '正好本周就有人发礼品卡任务被拦截了,太应景。', createdAt: '2026-07-10T09:00:00' },
       ],
       createdAt: '2026-07-09T09:00:00', tags: ['防诈骗', '银发数字课堂', '社区活动'],
+      attendees: ['u13', 'u4', 'u6'],
     },
     {
       id: 'p14', authorId: 'u2', kind: 'skill',

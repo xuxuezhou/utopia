@@ -1,18 +1,53 @@
 import { useMemo } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { useStore, useCurrentUser, poolBalance } from '../lib/store'
+import { hasPlusBenefits } from '../lib/monetize'
 import { PostCard, TaskCard, UserRow } from '../components/cards'
-import { Empty, Section } from '../components/ui'
+import { Empty, Section, toast } from '../components/ui'
 
 const VIS_LABEL = { public: '公开', apply: '申请加入', invite: '邀请制', org_verified: '机构验证' }
 
 export default function Circles() {
-  const { state } = useStore()
+  const { state, actions } = useStore()
   const me = useCurrentUser()!
+  const member = hasPlusBenefits(me)
+  const joined = me.communityIds.map(cid => state.communities.find(c => c.id === cid)).filter(Boolean)
   return (
     <div>
       <h1 className="text-xl font-semibold mb-1">Utopia 圈子</h1>
       <p className="text-sm text-ink-400 mb-5">大学、公寓、街区、公司和兴趣社群——高密度社区让互助更容易发生。</p>
+
+      {/* Plus 多社区管理 */}
+      {joined.length > 0 && (
+        <div className="card p-4 mb-5">
+          <div className="flex items-center gap-2 mb-1">
+            <h3 className="font-semibold text-sm">我的圈子管理</h3>
+            <span className="text-[10px] text-coral-500 font-semibold">Plus</span>
+            {!member && <span className="text-xs text-ink-300">🔒 会员可集中管理多个圈子</span>}
+          </div>
+          <p className="text-[11px] text-ink-300 mb-3">主圈子会展示在你的个人主页;设置只影响展示,不影响任何圈子内权限。</p>
+          <div className="space-y-2">
+            {joined.map((c, i) => (
+              <div key={c!.id} className="flex items-center gap-2.5 bg-cream-50 rounded-xl px-3 py-2.5">
+                <span className="text-lg">{c!.emoji}</span>
+                <Link to={`/circle/${c!.id}`} className="text-sm font-medium truncate">{c!.name}</Link>
+                {i === 0 && <span className="chip !py-0 !px-1.5 !text-[10px] bg-coral-50 text-coral-600">主圈子</span>}
+                <span className="flex-1" />
+                {member ? (
+                  <>
+                    {i !== 0 && <button className="btn-outline !py-1 !text-xs" onClick={() => { actions.setPrimaryCommunity(c!.id); toast(`已把「${c!.name}」设为主圈子`) }}>设为主圈子</button>}
+                    <button className="btn-ghost !py-1 !text-xs" onClick={() => {
+                      if (confirm(`确定退出「${c!.name}」吗?`)) { actions.leaveCommunity(c!.id); toast('已退出圈子') }
+                    }}>退出</button>
+                  </>
+                ) : (
+                  <button className="btn-ghost !py-1 !text-xs" onClick={() => toast('多社区管理是 Plus / Pro 会员功能')}>管理 🔒</button>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
       <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
         {state.communities.map(c => {
           const joined = me.communityIds.includes(c.id)
