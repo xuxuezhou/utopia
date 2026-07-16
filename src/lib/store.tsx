@@ -140,7 +140,7 @@ function buildActions(setState: (fn: (s: AppState) => AppState) => void, getStat
       mutate(d => {
         d.currentUserId = userId
         d.onboarded = true
-        if (!d.tourDone) d.tourStep = 0   // 首次进入自动开始新手教程(可跳过)
+        d.tourStep = 0   // 每次登录自动开始新手教程(随时可跳过)
       })
     },
     logout() {
@@ -173,7 +173,7 @@ function buildActions(setState: (fn: (s: AppState) => AppState) => void, getStat
         u.emergencyContact = p.emergencyContact; u.allowOffline = p.allowOffline; u.maxDistanceKm = p.maxDistanceKm
         d.ledger.push(mkEntry({ from: 'sys:issuer', to: u.id, amount: 50, type: 'signup_bonus', memo: '完善个人资料' }))
         d.onboarded = true
-        if (!d.tourDone) d.tourStep = 0
+        d.tourStep = 0
         notify(d, u.id, '✨', '获得 50 pt', '完善个人资料奖励已到账。完成身份认证还可再获得 100 pt。', '/points')
       })
     },

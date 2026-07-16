@@ -258,11 +258,19 @@ try {
   ok('商业化: 非发布者被拒绝购买加速', text.includes('只有发布者本人'))
 
   // ---------- 商业化:免费额度加速自己的任务,且不产生任何积分账目 ----------
+  // 动态选一个未过期、可推广的自有任务(静态种子日期会随真实时间过期)
+  const boostTarget = await page.evaluate(() => {
+    const s = JSON.parse(localStorage.getItem('utopia-state-v1'))
+    const t = s.tasks.find(t => ['open', 'applied'].includes(t.status) && t.publisherId === s.currentUserId
+      && !t.helperId && ['T0', 'T1'].includes(t.riskTier) && (t.riskFlags ?? []).length === 0
+      && t.points <= 500 && new Date(`${t.date}T${t.startTime}:00`).getTime() > Date.now())
+    return t?.id ?? null
+  })
   const before = await page.evaluate(() => {
     const s = JSON.parse(localStorage.getItem('utopia-state-v1'))
     return { ledger: s.ledger.length, cash: s.cashLedger.length, boosts: s.boosts.length }
   })
-  await page.goto(`${BASE}/#/boost/t5`, { waitUntil: 'networkidle0' })
+  await page.goto(`${BASE}/#/boost/${boostTarget}`, { waitUntil: 'networkidle0' })
   await sleep(500)
   await clickByText(page, 'button', '社区加速')
   await sleep(300)
@@ -270,11 +278,11 @@ try {
   await sleep(400)
   await clickByText(page, 'button', '使用本月免费额度')
   await sleep(700)
-  const afterFree = await page.evaluate(() => {
+  const afterFree = await page.evaluate((tid) => {
     const s = JSON.parse(localStorage.getItem('utopia-state-v1'))
-    const b = s.boosts.find(x => x.taskId === 't5')
+    const b = s.boosts.find(x => x.taskId === tid)
     return { ledger: s.ledger.length, cash: s.cashLedger.length, boosts: s.boosts.length, source: b?.source }
-  })
+  }, boostTarget)
   ok('商业化: 免费额度加速生效', afterFree.boosts === before.boosts + 1 && afterFree.source === 'free_quota')
   ok('商业化: 加速不产生积分账目、免费额度不产生现金流水',
     afterFree.ledger === before.ledger && afterFree.cash === before.cash,
@@ -439,6 +447,22 @@ try {
   }
   const tourGone = !(await bodyText(page)).includes('新手教程 ')
   ok('新手教程: 24 步交互式走查(点击真实按钮推进,覆盖全部功能)', tourOk && tourGone, tourDetail)
+
+  // 完成过教程后,重新登录仍应自动出现(每次登录都触发)
+  await page.goto(`${BASE}/#/`, { waitUntil: 'networkidle0' })
+  await sleep(300)
+  await clickByText(page, 'button', '更多')
+  await sleep(300)
+  await clickByText(page, 'button', '退出登录')
+  await sleep(700)
+  await clickByText(page, 'button', '体验演示账号')
+  await sleep(400)
+  await clickByText(page, 'button', '陈屿')
+  await sleep(900)
+  const tourAgain = (await bodyText(page)).includes('新手教程')
+  await clickByText(page, 'button', '跳过').catch(() => {})
+  await sleep(300)
+  ok('新手教程: 重新登录后再次自动出现', tourAgain)
 
   // ---------- 搜索页只有一个搜索框 ----------
   await page.goto(`${BASE}/#/search`, { waitUntil: 'networkidle0' })
